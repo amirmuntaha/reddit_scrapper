@@ -82,38 +82,44 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">R</span>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          {/* Mobile: stack vertically, Desktop: single row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-xs sm:text-sm">R</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-bold">Reddit Scraper</h1>
             </div>
-            <h1 className="text-xl font-bold">Reddit Scraper</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">
-              {totalPosts} posts scraped
-            </span>
-            <ScrapeButton />
+            <div className="flex items-center gap-2 sm:gap-4">
+              <span className="text-xs sm:text-sm text-gray-400 hidden sm:inline">
+                {totalPosts} posts scraped
+              </span>
+              <span className="text-xs text-gray-400 sm:hidden">
+                {totalPosts}
+              </span>
+              <ScrapeButton />
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 flex-1 w-full">
         {totalPosts === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📭</div>
-            <h2 className="text-2xl font-bold mb-2">No posts scraped yet</h2>
-            <p className="text-gray-400 mb-6">
+          <div className="text-center py-12 sm:py-20">
+            <div className="text-5xl sm:text-6xl mb-4">📭</div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">No posts scraped yet</h2>
+            <p className="text-gray-400 mb-6 text-sm sm:text-base px-4">
               Click &quot;Run Scrape&quot; to fetch the top Reddit posts of the day.
             </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {posts.map((post) => (
                 <article
                   key={post.id}
@@ -136,8 +142,8 @@ export default async function Home({ searchParams }: PageProps) {
                   </div>
 
                   {/* Content */}
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="p-3 sm:p-4">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">
                         r/{post.subreddit}
                       </span>
@@ -151,13 +157,13 @@ export default async function Home({ searchParams }: PageProps) {
                     </h3>
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>u/{post.author}</span>
-                      <span>
+                      <span className="truncate mr-2">u/{post.author}</span>
+                      <span className="flex-shrink-0">
                         {new Date(post.scraped_at).toLocaleDateString()}
                       </span>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between gap-2">
+                    <div className="mt-3 pt-3 border-t border-gray-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <a
                         href={post.reddit_url}
                         target="_blank"
@@ -192,43 +198,40 @@ export default async function Home({ searchParams }: PageProps) {
       </main>
 
       {/* Footer with Quick Links */}
-      <footer className="border-t border-gray-800 bg-gray-900/30 mt-8">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+      <footer className="border-t border-gray-800 bg-gray-900/30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm">
             <a
               href="https://github.com/amirmuntaha/reddit_scrapper"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
             >
-              📂 GitHub Repo
+              📂 GitHub
             </a>
-            <span className="text-gray-700">•</span>
             <a
               href="https://vercel.com/amirmuntaha/reddit-scrapper"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
             >
-              🚀 Vercel Dashboard
+              🚀 Vercel
             </a>
-            <span className="text-gray-700">•</span>
             <a
               href="https://supabase.com/dashboard"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
             >
-              🗄️ Supabase Dashboard
+              🗄️ Supabase
             </a>
-            <span className="text-gray-700">•</span>
             <a
               href="https://vercel.com/amirmuntaha/reddit-scrapper/logs"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
             >
-              📋 Vercel Logs
+              📋 Logs
             </a>
           </div>
         </div>

@@ -24,31 +24,31 @@ export default function ScrapeButton() {
 
       if (response.ok) {
         setResult(
-          `✅ Success! Found ${data.posts_found} posts, inserted ${data.inserted}, skipped ${data.skipped}`
+          `✅ ${data.posts_found} found, ${data.inserted} inserted`
         );
         // Reload the page after a short delay to show new posts
         setTimeout(() => window.location.reload(), 2000);
       } else {
-        setResult(`❌ Error: ${data.error || "Unknown error"}`);
+        setResult(`❌ ${data.error || "Error"}`);
       }
     } catch (error) {
-      setResult(`❌ Failed to connect: ${error}`);
+      setResult(`❌ Failed: ${error}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col items-end gap-1">
       <button
         onClick={handleScrape}
         disabled={loading}
-        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:cursor-not-allowed rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
       >
         {loading ? "Scraping..." : "Run Scrape"}
       </button>
       {result && (
-        <span className="text-xs text-gray-300 max-w-xs truncate">
+        <span className="text-xs text-gray-300 max-w-[200px] sm:max-w-xs text-right leading-tight">
           {result}
         </span>
       )}

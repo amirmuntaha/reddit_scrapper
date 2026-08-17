@@ -168,6 +168,9 @@ export default async function Home({ searchParams }: PageProps) {
                       </a>
                       <InstagramButton
                         postId={post.id}
+                        imageUrl={post.image_url}
+                        caption={post.caption || post.title}
+                        title={post.title}
                         alreadyPosted={post.posted_to_instagram}
                       />
                     </div>

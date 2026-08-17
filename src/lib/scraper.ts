@@ -14,6 +14,26 @@ const REDDIT_RSS_URL = "https://www.reddit.com/r/all/top.rss?t=day&limit=50";
 const MAX_FETCH_LIMIT = 50;
 
 /**
+ * Builds the RSS URL with optional authentication params.
+ * Auth params (feed= and user=) bypass Reddit's strict rate limit
+ * of 1 request per 60 seconds for unauthenticated RSS access.
+ * 
+ * Set REDDIT_RSS_FEED and REDDIT_RSS_USER env vars in Vercel.
+ * Get these from: https://www.reddit.com/prefs/feeds/
+ */
+function buildRSSUrl(baseUrl: string): string {
+  const feed = process.env.REDDIT_RSS_FEED;
+  const user = process.env.REDDIT_RSS_USER;
+
+  if (feed && user) {
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}feed=${feed}&user=${user}`;
+  }
+
+  return baseUrl;
+}
+
+/**
  * Browser-like headers that bypass Reddit's anti-bot detection.
  * Reddit blocks requests that don't look like they're from a real browser,
  * especially from cloud/datacenter IPs (Vercel, AWS, etc.)
@@ -191,13 +211,16 @@ function generateCaption(title: string, subreddit: string): string {
  * Fetches the Reddit RSS feed with retry logic and multiple URL fallbacks.
  * Uses browser-like headers to bypass Reddit's datacenter IP blocking.
  */
-async function fetchRedditRSS(limit: number = 50): Promise<string> {
-  // Cap at MAX_FETCH_LIMIT
-  const fetchLimit = Math.min(limit, MAX_FETCH_LIMIT);
+/**
+ * Fetches the Reddit RSS feed with auth params and fallback URLs.
+ * Uses a single request of 50 to avoid hitting the 1 req/min rate limit.
+ * Auth params (feed= & user=) bypass the rate limit entirely.
+ */
+async function fetchRedditRSS(): Promise<string> {
   const urls = [
-    `https://www.reddit.com/r/all/top.rss?t=day&limit=${fetchLimit}`,
-    `https://old.reddit.com/r/all/top.rss?t=day&limit=${fetchLimit}`,
-    `https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=${fetchLimit}`,
+    buildRSSUrl(`https://www.reddit.com/r/all/top.rss?t=day&limit=${MAX_FETCH_LIMIT}`),
+    buildRSSUrl(`https://old.reddit.com/r/all/top.rss?t=day&limit=${MAX_FETCH_LIMIT}`),
+    buildRSSUrl(`https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=${MAX_FETCH_LIMIT}`),
   ];
 
   let lastError = "";
@@ -229,25 +252,19 @@ async function fetchRedditRSS(limit: number = 50): Promise<string> {
 
 /**
  * Fetches top daily posts from Reddit RSS feed and filters for image posts.
- * 
- * If the first batch has < 7 images or > 3 videos skipped, fetches 10 more
- * posts to try to fill the 10-image target.
+ * Single fetch of 50 posts, filters for images, returns up to 10.
  */
 export async function fetchTopRedditPosts(): Promise<
   Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
 > {
-  // First fetch: get top 25 daily posts
-  let xml = await fetchRedditRSS(25);
-  let parsedPosts = parseAtomFeed(xml);
-  let posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
+  const xml = await fetchRedditRSS();
+  const parsedPosts = parseAtomFeed(xml);
+  const posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
   let videosSkipped = 0;
-  const seenIds = new Set<string>();
 
   for (const parsed of parsedPosts) {
-    seenIds.add(parsed.id);
     const imageUrl = getBestImageUrl(parsed);
 
-    // Count skipped videos
     if (!imageUrl) {
       videosSkipped++;
       continue;
@@ -268,47 +285,13 @@ export async function fetchTopRedditPosts(): Promise<
         : null,
     });
 
+    // Only take top 10 image posts
     if (posts.length >= 10) break;
   }
 
-  // If we got < 7 images or skipped > 3 videos, fetch more
-  if (posts.length < 7 || videosSkipped > 3) {
-    console.log(
-      `[Scraper] First batch: ${posts.length} images, ${videosSkipped} videos skipped. Fetching more...`
-    );
-
-    // Fetch a larger batch (50 posts)
-    xml = await fetchRedditRSS(50);
-    parsedPosts = parseAtomFeed(xml);
-
-    for (const parsed of parsedPosts) {
-      // Skip posts we already processed
-      if (seenIds.has(parsed.id)) continue;
-      seenIds.add(parsed.id);
-
-      const imageUrl = getBestImageUrl(parsed);
-      if (!imageUrl) continue;
-
-      posts.push({
-        reddit_id: parsed.id,
-        title: parsed.title,
-        image_url: imageUrl,
-        caption: generateCaption(parsed.title, parsed.subreddit),
-        subreddit: parsed.subreddit,
-        author: parsed.author,
-        reddit_url: parsed.link,
-        score: 0,
-        posted_to_instagram: false,
-        reddit_created_at: parsed.published
-          ? new Date(parsed.published).toISOString()
-          : null,
-      });
-
-      if (posts.length >= 10) break;
-    }
-  }
-
-  console.log(`[Scraper] Final result: ${posts.length} image posts collected`);
+  console.log(
+    `[Scraper] Result: ${posts.length} images from ${parsedPosts.length} posts (${videosSkipped} videos/text skipped)`
+  );
   return posts;
 }
 

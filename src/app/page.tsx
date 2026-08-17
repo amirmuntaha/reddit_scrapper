@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import ScrapeButton from "./components/ScrapeButton";
+import InstagramButton from "./components/InstagramButton";
 import Pagination from "./components/Pagination";
 import { Suspense } from "react";
 
@@ -156,7 +157,7 @@ export default async function Home({ searchParams }: PageProps) {
                       </span>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-gray-800 flex gap-2">
+                    <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between gap-2">
                       <a
                         href={post.reddit_url}
                         target="_blank"
@@ -165,6 +166,10 @@ export default async function Home({ searchParams }: PageProps) {
                       >
                         View on Reddit ↗
                       </a>
+                      <InstagramButton
+                        postId={post.id}
+                        alreadyPosted={post.posted_to_instagram}
+                      />
                     </div>
                   </div>
                 </article>

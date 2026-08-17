@@ -1,5 +1,7 @@
 # Reddit Scraper 🤖📸
 
+🌐 **Live Demo:** [https://reddit-scrapper-phi.vercel.app](https://reddit-scrapper-phi.vercel.app)
+
 A Next.js application that scrapes the top 10 most popular image posts from Reddit daily and stores them in Supabase PostgreSQL. Designed to be deployed on Vercel with a daily cron job, providing content ready to be posted to Instagram.
 
 ## Features
@@ -110,6 +112,42 @@ vercel.json                   # Cron job configuration
 | `posted_to_instagram` | BOOLEAN | Tracking flag |
 | `reddit_created_at` | TIMESTAMPTZ | When posted on Reddit |
 | `scraped_at` | TIMESTAMPTZ | When scraped |
+
+## Automation Tests
+
+This project uses [Playwright](https://playwright.dev/) to run end-to-end tests against the deployed website.
+
+### Running tests
+
+```bash
+# Run tests against the default deployed URL
+npm test
+
+# Run tests against a specific URL
+BASE_URL=https://your-production-url.vercel.app npm test
+
+# Run tests with browser visible (headed mode)
+npm run test:headed
+
+# View the test report
+npm run test:report
+```
+
+### Test Suites
+
+| File | Description |
+|------|-------------|
+| `tests/homepage.spec.ts` | Dashboard UI — header, post grid, empty state, links |
+| `tests/api-scrape.spec.ts` | API endpoint — response codes, JSON structure, timing |
+| `tests/performance.spec.ts` | Performance, responsiveness, accessibility checks |
+
+### Note on Deployment Protection
+
+If Vercel's **Deployment Protection** is enabled, homepage and performance tests will be skipped automatically (the site redirects to a Vercel login page). To run the full test suite:
+
+1. Go to **Vercel Dashboard** → your project → **Settings** → **Deployment Protection**
+2. Set **Standard Protection** to **Only Preview Deployments** (keeps production public)
+3. Re-run: `npm test`
 
 ## Future Enhancements
 

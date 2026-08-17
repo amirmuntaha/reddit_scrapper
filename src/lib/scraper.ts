@@ -190,11 +190,11 @@ function generateCaption(title: string, subreddit: string): string {
  * Fetches the Reddit RSS feed with retry logic and multiple URL fallbacks.
  * Uses browser-like headers to bypass Reddit's datacenter IP blocking.
  */
-async function fetchRedditRSS(): Promise<string> {
+async function fetchRedditRSS(limit: number = 50): Promise<string> {
   const urls = [
-    REDDIT_RSS_URL,
-    "https://old.reddit.com/r/all/top.rss?t=day&limit=50",
-    "https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=50",
+    `https://www.reddit.com/r/all/top.rss?t=day&limit=${limit}`,
+    `https://old.reddit.com/r/all/top.rss?t=day&limit=${limit}`,
+    `https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=${limit}`,
   ];
 
   let lastError = "";
@@ -225,20 +225,30 @@ async function fetchRedditRSS(): Promise<string> {
 }
 
 /**
- * Fetches top posts from Reddit RSS feed and filters for image posts
+ * Fetches top daily posts from Reddit RSS feed and filters for image posts.
+ * 
+ * If the first batch has < 7 images or > 3 videos skipped, fetches 10 more
+ * posts to try to fill the 10-image target.
  */
 export async function fetchTopRedditPosts(): Promise<
   Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
 > {
-  const xml = await fetchRedditRSS();
-  const parsedPosts = parseAtomFeed(xml);
-  const posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
+  // First fetch: get top 25 daily posts
+  let xml = await fetchRedditRSS(25);
+  let parsedPosts = parseAtomFeed(xml);
+  let posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
+  let videosSkipped = 0;
+  const seenIds = new Set<string>();
 
   for (const parsed of parsedPosts) {
+    seenIds.add(parsed.id);
     const imageUrl = getBestImageUrl(parsed);
 
-    // Skip posts without images (videos, text posts, etc.)
-    if (!imageUrl) continue;
+    // Count skipped videos
+    if (!imageUrl) {
+      videosSkipped++;
+      continue;
+    }
 
     posts.push({
       reddit_id: parsed.id,
@@ -255,10 +265,47 @@ export async function fetchTopRedditPosts(): Promise<
         : null,
     });
 
-    // Only take top 10 image posts
     if (posts.length >= 10) break;
   }
 
+  // If we got < 7 images or skipped > 3 videos, fetch more
+  if (posts.length < 7 || videosSkipped > 3) {
+    console.log(
+      `[Scraper] First batch: ${posts.length} images, ${videosSkipped} videos skipped. Fetching more...`
+    );
+
+    // Fetch a larger batch (50 posts)
+    xml = await fetchRedditRSS(50);
+    parsedPosts = parseAtomFeed(xml);
+
+    for (const parsed of parsedPosts) {
+      // Skip posts we already processed
+      if (seenIds.has(parsed.id)) continue;
+      seenIds.add(parsed.id);
+
+      const imageUrl = getBestImageUrl(parsed);
+      if (!imageUrl) continue;
+
+      posts.push({
+        reddit_id: parsed.id,
+        title: parsed.title,
+        image_url: imageUrl,
+        caption: generateCaption(parsed.title, parsed.subreddit),
+        subreddit: parsed.subreddit,
+        author: parsed.author,
+        reddit_url: parsed.link,
+        score: 0,
+        posted_to_instagram: false,
+        reddit_created_at: parsed.published
+          ? new Date(parsed.published).toISOString()
+          : null,
+      });
+
+      if (posts.length >= 10) break;
+    }
+  }
+
+  console.log(`[Scraper] Final result: ${posts.length} image posts collected`);
   return posts;
 }
 

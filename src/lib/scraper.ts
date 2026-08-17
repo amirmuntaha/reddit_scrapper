@@ -98,6 +98,12 @@ function parseAtomFeed(xml: string): ParsedPost[] {
       if (imgLinkMatch) {
         imageUrl = imgLinkMatch[1];
       }
+
+      // Check if this is a video post (v.redd.it link in content)
+      const isVideo = content.includes("v.redd.it");
+      if (isVideo) {
+        imageUrl = "__VIDEO__"; // Mark as video to filter out later
+      }
     }
 
     // Extract published date
@@ -146,16 +152,27 @@ function isImageUrl(url: string): boolean {
 /**
  * Gets the best image URL from a parsed post
  * Prioritizes: direct image URL > thumbnail (if it's a real image)
+ * Rejects: video thumbnails from external-preview.redd.it (they return 403)
  */
 function getBestImageUrl(post: ParsedPost): string | null {
-  // Direct image link from content (i.redd.it, i.imgur.com)
+  // If marked as video, skip entirely
+  if (post.imageUrl === "__VIDEO__") {
+    return null;
+  }
+
+  // Direct image link from content (i.redd.it, i.imgur.com) — these always work
   if (post.imageUrl && isImageUrl(post.imageUrl)) {
     return post.imageUrl;
   }
 
-  // Thumbnail as fallback (these are preview.redd.it URLs with good resolution)
+  // Only use preview.redd.it thumbnails (NOT external-preview.redd.it)
+  // external-preview.redd.it URLs are video post thumbnails that return 403
   if (post.thumbnail && isImageUrl(post.thumbnail)) {
-    // Upgrade thumbnail to higher resolution by removing width constraint
+    if (post.thumbnail.includes("external-preview.redd.it")) {
+      // These are video thumbnails — skip them
+      return null;
+    }
+    // preview.redd.it URLs work fine for actual image posts
     return post.thumbnail.replace(/width=\d+/, "width=1080");
   }
 
@@ -222,9 +239,6 @@ export async function fetchTopRedditPosts(): Promise<
 
     // Skip posts without images (videos, text posts, etc.)
     if (!imageUrl) continue;
-
-    // Skip video links (v.redd.it)
-    if (parsed.imageUrl && parsed.imageUrl.includes("v.redd.it")) continue;
 
     posts.push({
       reddit_id: parsed.id,

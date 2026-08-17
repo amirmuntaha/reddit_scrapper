@@ -1,99 +1,115 @@
 import { supabase, RedditPost } from "./supabase";
 
-const REDDIT_OAUTH_URL = "https://oauth.reddit.com/r/all/top?t=day&limit=50";
-const REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token";
-
-interface RedditApiChild {
-  data: {
-    id: string;
-    title: string;
-    subreddit: string;
-    author: string;
-    permalink: string;
-    score: number;
-    created_utc: number;
-    url: string;
-    post_hint?: string;
-    is_video: boolean;
-    over_18: boolean;
-    preview?: {
-      images?: Array<{
-        source: {
-          url: string;
-          width: number;
-          height: number;
-        };
-      }>;
-    };
-  };
-}
-
-interface RedditApiResponse {
-  data: {
-    children: RedditApiChild[];
-  };
-}
-
-interface RedditTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope: string;
-}
-
 /**
- * Gets an OAuth2 access token from Reddit using client credentials grant.
- * This uses "script" app type authentication (application-only OAuth).
+ * Reddit RSS Feed Scraper
+ * 
+ * Uses Reddit's public RSS/Atom feed endpoints which are still free and working
+ * in 2026 (unlike the JSON API which requires OAuth2 approval).
+ * 
+ * Feed URL pattern: https://www.reddit.com/r/{subreddit}/top.rss?t=day&limit=50
  */
-async function getRedditAccessToken(): Promise<string> {
-  const clientId = process.env.REDDIT_CLIENT_ID;
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
-  const username = process.env.REDDIT_USERNAME;
-  const password = process.env.REDDIT_PASSWORD;
 
-  if (!clientId || !clientSecret) {
-    throw new Error(
-      "Missing REDDIT_CLIENT_ID or REDDIT_CLIENT_SECRET environment variables"
-    );
-  }
+const REDDIT_RSS_URL = "https://www.reddit.com/r/all/top.rss?t=day&limit=50";
 
-  // Base64 encode client_id:client_secret for Basic auth
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-  // Use password grant if username/password provided, otherwise use client_credentials
-  const body = new URLSearchParams();
-
-  if (username && password) {
-    body.append("grant_type", "password");
-    body.append("username", username);
-    body.append("password", password);
-  } else {
-    body.append("grant_type", "client_credentials");
-  }
-
-  const response = await fetch(REDDIT_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": `RedditScraper/1.0 (by /u/${username || "bot"})`,
-    },
-    body: body.toString(),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to get Reddit access token: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
-
-  const data: RedditTokenResponse = await response.json();
-  return data.access_token;
+interface ParsedPost {
+  id: string;
+  title: string;
+  author: string;
+  subreddit: string;
+  link: string;
+  thumbnail: string | null;
+  imageUrl: string | null;
+  published: string;
 }
 
 /**
- * Checks if a URL points to a valid image
+ * Parses the Atom XML feed from Reddit into structured post data
+ */
+function parseAtomFeed(xml: string): ParsedPost[] {
+  const posts: ParsedPost[] = [];
+
+  // Match all <entry> blocks
+  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+  let entryMatch;
+
+  while ((entryMatch = entryRegex.exec(xml)) !== null) {
+    const entry = entryMatch[1];
+
+    // Extract post ID (format: t3_xxxxx)
+    const idMatch = entry.match(/<id>(.*?)<\/id>/);
+    const id = idMatch ? idMatch[1].replace("t3_", "") : "";
+
+    // Extract title
+    const titleMatch = entry.match(/<title>(.*?)<\/title>/);
+    const title = titleMatch ? decodeHtmlEntities(titleMatch[1]) : "";
+
+    // Extract author
+    const authorMatch = entry.match(/<name>(.*?)<\/name>/);
+    const author = authorMatch ? authorMatch[1].replace("/u/", "") : "";
+
+    // Extract subreddit from category
+    const categoryMatch = entry.match(/<category term="(.*?)"/);
+    const subreddit = categoryMatch ? categoryMatch[1] : "";
+
+    // Extract link (permalink)
+    const linkMatch = entry.match(/<link href="(.*?)"/);
+    const link = linkMatch ? linkMatch[1] : "";
+
+    // Extract thumbnail from media:thumbnail
+    const thumbnailMatch = entry.match(/<media:thumbnail url="(.*?)"/);
+    const thumbnail = thumbnailMatch ? decodeHtmlEntities(thumbnailMatch[1]) : null;
+
+    // Extract direct image URL from content (the [link] href)
+    const contentMatch = entry.match(/<content type="html">([\s\S]*?)<\/content>/);
+    let imageUrl: string | null = null;
+
+    if (contentMatch) {
+      const content = decodeHtmlEntities(contentMatch[1]);
+      // Look for direct image links (i.redd.it, i.imgur.com)
+      const imgLinkMatch = content.match(
+        /href="(https:\/\/i\.redd\.it\/[^"]+|https:\/\/i\.imgur\.com\/[^"]+)"/
+      );
+      if (imgLinkMatch) {
+        imageUrl = imgLinkMatch[1];
+      }
+    }
+
+    // Extract published date
+    const publishedMatch = entry.match(/<published>(.*?)<\/published>/);
+    const published = publishedMatch ? publishedMatch[1] : "";
+
+    if (id && title) {
+      posts.push({
+        id,
+        title,
+        author,
+        subreddit,
+        link,
+        thumbnail,
+        imageUrl,
+        published,
+      });
+    }
+  }
+
+  return posts;
+}
+
+/**
+ * Decodes HTML entities in a string
+ */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#32;/g, " ");
+}
+
+/**
+ * Checks if a URL is a direct image link
  */
 function isImageUrl(url: string): boolean {
   const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
@@ -102,23 +118,19 @@ function isImageUrl(url: string): boolean {
 }
 
 /**
- * Extracts the best image URL from a Reddit post
+ * Gets the best image URL from a parsed post
+ * Prioritizes: direct image URL > thumbnail (if it's a real image)
  */
-function getImageUrl(post: RedditApiChild["data"]): string | null {
-  // Direct image link (i.redd.it, i.imgur.com, etc.)
-  if (isImageUrl(post.url)) {
-    return post.url;
+function getBestImageUrl(post: ParsedPost): string | null {
+  // Direct image link from content (i.redd.it, i.imgur.com)
+  if (post.imageUrl && isImageUrl(post.imageUrl)) {
+    return post.imageUrl;
   }
 
-  // Check post_hint for image type
-  if (post.post_hint === "image") {
-    return post.url;
-  }
-
-  // Fallback to preview image
-  if (post.preview?.images?.[0]?.source?.url) {
-    // Reddit encodes the URL with HTML entities
-    return post.preview.images[0].source.url.replace(/&amp;/g, "&");
+  // Thumbnail as fallback (these are preview.redd.it URLs with good resolution)
+  if (post.thumbnail && isImageUrl(post.thumbnail)) {
+    // Upgrade thumbnail to higher resolution by removing width constraint
+    return post.thumbnail.replace(/width=\d+/, "width=1080");
   }
 
   return null;
@@ -127,58 +139,54 @@ function getImageUrl(post: RedditApiChild["data"]): string | null {
 /**
  * Generates a caption suitable for Instagram from the post title
  */
-function generateCaption(post: RedditApiChild["data"]): string {
-  const title = post.title;
-  const subreddit = post.subreddit;
-  const caption = `${title}\n\n📍 from r/${subreddit}\n\n#reddit #${subreddit} #viral #trending #memes #funny #popular`;
-  return caption;
+function generateCaption(title: string, subreddit: string): string {
+  return `${title}\n\n📍 from r/${subreddit}\n\n#reddit #${subreddit} #viral #trending #memes #funny #popular`;
 }
 
 /**
- * Fetches top posts from Reddit using OAuth2 authentication
+ * Fetches top posts from Reddit RSS feed and filters for image posts
  */
 export async function fetchTopRedditPosts(): Promise<
   Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
 > {
-  // Get OAuth2 access token
-  const accessToken = await getRedditAccessToken();
-
-  const response = await fetch(REDDIT_OAUTH_URL, {
+  const response = await fetch(REDDIT_RSS_URL, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "User-Agent": `RedditScraper/1.0 (by /u/${process.env.REDDIT_USERNAME || "bot"})`,
+      "User-Agent": "RedditScraper/1.0 (NextJS; RSS Feed Reader)",
     },
   });
 
   if (!response.ok) {
     throw new Error(
-      `Reddit API error: ${response.status} ${response.statusText}`
+      `Reddit RSS error: ${response.status} ${response.statusText}`
     );
   }
 
-  const data: RedditApiResponse = await response.json();
+  const xml = await response.text();
+  const parsedPosts = parseAtomFeed(xml);
   const posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
 
-  for (const child of data.data.children) {
-    const post = child.data;
+  for (const parsed of parsedPosts) {
+    const imageUrl = getBestImageUrl(parsed);
 
-    // Skip NSFW posts, videos, and non-image posts
-    if (post.over_18 || post.is_video) continue;
-
-    const imageUrl = getImageUrl(post);
+    // Skip posts without images (videos, text posts, etc.)
     if (!imageUrl) continue;
 
+    // Skip video links (v.redd.it)
+    if (parsed.imageUrl && parsed.imageUrl.includes("v.redd.it")) continue;
+
     posts.push({
-      reddit_id: post.id,
-      title: post.title,
+      reddit_id: parsed.id,
+      title: parsed.title,
       image_url: imageUrl,
-      caption: generateCaption(post),
-      subreddit: post.subreddit,
-      author: post.author,
-      reddit_url: `https://reddit.com${post.permalink}`,
-      score: post.score,
+      caption: generateCaption(parsed.title, parsed.subreddit),
+      subreddit: parsed.subreddit,
+      author: parsed.author,
+      reddit_url: parsed.link,
+      score: 0, // RSS doesn't include scores
       posted_to_instagram: false,
-      reddit_created_at: new Date(post.created_utc * 1000).toISOString(),
+      reddit_created_at: parsed.published
+        ? new Date(parsed.published).toISOString()
+        : null,
     });
 
     // Only take top 10 image posts

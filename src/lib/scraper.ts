@@ -3,13 +3,35 @@ import { supabase, RedditPost } from "./supabase";
 /**
  * Reddit RSS Feed Scraper
  * 
- * Uses Reddit's public RSS/Atom feed endpoints which are still free and working
- * in 2026 (unlike the JSON API which requires OAuth2 approval).
+ * Uses Reddit's public RSS/Atom feed endpoints with browser-like headers
+ * to avoid being blocked by Reddit's anti-bot detection.
  * 
- * Feed URL pattern: https://www.reddit.com/r/{subreddit}/top.rss?t=day&limit=50
+ * Reddit blocks datacenter IPs (like Vercel) unless the request looks
+ * like it's coming from a real browser. Full browser headers are required.
  */
 
 const REDDIT_RSS_URL = "https://www.reddit.com/r/all/top.rss?t=day&limit=50";
+
+/**
+ * Browser-like headers that bypass Reddit's anti-bot detection.
+ * Reddit blocks requests that don't look like they're from a real browser,
+ * especially from cloud/datacenter IPs (Vercel, AWS, etc.)
+ */
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+  Connection: "keep-alive",
+  "Cache-Control": "max-age=0",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
+};
 
 interface ParsedPost {
   id: string;
@@ -57,10 +79,14 @@ function parseAtomFeed(xml: string): ParsedPost[] {
 
     // Extract thumbnail from media:thumbnail
     const thumbnailMatch = entry.match(/<media:thumbnail url="(.*?)"/);
-    const thumbnail = thumbnailMatch ? decodeHtmlEntities(thumbnailMatch[1]) : null;
+    const thumbnail = thumbnailMatch
+      ? decodeHtmlEntities(thumbnailMatch[1])
+      : null;
 
     // Extract direct image URL from content (the [link] href)
-    const contentMatch = entry.match(/<content type="html">([\s\S]*?)<\/content>/);
+    const contentMatch = entry.match(
+      /<content type="html">([\s\S]*?)<\/content>/
+    );
     let imageUrl: string | null = null;
 
     if (contentMatch) {
@@ -144,24 +170,50 @@ function generateCaption(title: string, subreddit: string): string {
 }
 
 /**
+ * Fetches the Reddit RSS feed with retry logic and multiple URL fallbacks.
+ * Uses browser-like headers to bypass Reddit's datacenter IP blocking.
+ */
+async function fetchRedditRSS(): Promise<string> {
+  const urls = [
+    REDDIT_RSS_URL,
+    "https://old.reddit.com/r/all/top.rss?t=day&limit=50",
+    "https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=50",
+  ];
+
+  let lastError = "";
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: BROWSER_HEADERS,
+      });
+
+      if (response.ok) {
+        const text = await response.text();
+        // Verify we got actual XML, not an error page
+        if (text.includes("<feed") || text.includes("<entry>")) {
+          return text;
+        }
+        lastError = `Got non-XML response from ${url}`;
+        continue;
+      }
+
+      lastError = `${url} returned ${response.status} ${response.statusText}`;
+    } catch (err) {
+      lastError = `Failed to fetch ${url}: ${err}`;
+    }
+  }
+
+  throw new Error(`All Reddit RSS endpoints failed. Last error: ${lastError}`);
+}
+
+/**
  * Fetches top posts from Reddit RSS feed and filters for image posts
  */
 export async function fetchTopRedditPosts(): Promise<
   Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
 > {
-  const response = await fetch(REDDIT_RSS_URL, {
-    headers: {
-      "User-Agent": "RedditScraper/1.0 (NextJS; RSS Feed Reader)",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Reddit RSS error: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const xml = await response.text();
+  const xml = await fetchRedditRSS();
   const parsedPosts = parseAtomFeed(xml);
   const posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[] = [];
 

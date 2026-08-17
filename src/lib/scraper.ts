@@ -11,6 +11,7 @@ import { supabase, RedditPost } from "./supabase";
  */
 
 const REDDIT_RSS_URL = "https://www.reddit.com/r/all/top.rss?t=day&limit=50";
+const MAX_FETCH_LIMIT = 50;
 
 /**
  * Browser-like headers that bypass Reddit's anti-bot detection.
@@ -191,10 +192,12 @@ function generateCaption(title: string, subreddit: string): string {
  * Uses browser-like headers to bypass Reddit's datacenter IP blocking.
  */
 async function fetchRedditRSS(limit: number = 50): Promise<string> {
+  // Cap at MAX_FETCH_LIMIT
+  const fetchLimit = Math.min(limit, MAX_FETCH_LIMIT);
   const urls = [
-    `https://www.reddit.com/r/all/top.rss?t=day&limit=${limit}`,
-    `https://old.reddit.com/r/all/top.rss?t=day&limit=${limit}`,
-    `https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=${limit}`,
+    `https://www.reddit.com/r/all/top.rss?t=day&limit=${fetchLimit}`,
+    `https://old.reddit.com/r/all/top.rss?t=day&limit=${fetchLimit}`,
+    `https://www.reddit.com/r/pics+funny+aww+mildlyinteresting+interestingasfuck/top.rss?t=day&limit=${fetchLimit}`,
   ];
 
   let lastError = "";

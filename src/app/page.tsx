@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
+import ScrapeButton from "./components/ScrapeButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -56,12 +57,7 @@ export default async function Home() {
             <span className="text-sm text-gray-400">
               {posts.length} posts scraped
             </span>
-            <a
-              href="/api/scrape"
-              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-sm font-medium transition-colors"
-            >
-              Run Scrape
-            </a>
+            <ScrapeButton />
           </div>
         </div>
       </header>

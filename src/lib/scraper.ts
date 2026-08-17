@@ -1,6 +1,7 @@
 import { supabase, RedditPost } from "./supabase";
 
-const REDDIT_TOP_URL = "https://www.reddit.com/r/all/top.json?t=day&limit=50";
+const REDDIT_OAUTH_URL = "https://oauth.reddit.com/r/all/top?t=day&limit=50";
+const REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token";
 
 interface RedditApiChild {
   data: {
@@ -31,6 +32,64 @@ interface RedditApiResponse {
   data: {
     children: RedditApiChild[];
   };
+}
+
+interface RedditTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+}
+
+/**
+ * Gets an OAuth2 access token from Reddit using client credentials grant.
+ * This uses "script" app type authentication (application-only OAuth).
+ */
+async function getRedditAccessToken(): Promise<string> {
+  const clientId = process.env.REDDIT_CLIENT_ID;
+  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+  const username = process.env.REDDIT_USERNAME;
+  const password = process.env.REDDIT_PASSWORD;
+
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "Missing REDDIT_CLIENT_ID or REDDIT_CLIENT_SECRET environment variables"
+    );
+  }
+
+  // Base64 encode client_id:client_secret for Basic auth
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  // Use password grant if username/password provided, otherwise use client_credentials
+  const body = new URLSearchParams();
+
+  if (username && password) {
+    body.append("grant_type", "password");
+    body.append("username", username);
+    body.append("password", password);
+  } else {
+    body.append("grant_type", "client_credentials");
+  }
+
+  const response = await fetch(REDDIT_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": `RedditScraper/1.0 (by /u/${username || "bot"})`,
+    },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to get Reddit access token: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const data: RedditTokenResponse = await response.json();
+  return data.access_token;
 }
 
 /**
@@ -76,19 +135,25 @@ function generateCaption(post: RedditApiChild["data"]): string {
 }
 
 /**
- * Fetches top posts from Reddit and filters for image posts
+ * Fetches top posts from Reddit using OAuth2 authentication
  */
 export async function fetchTopRedditPosts(): Promise<
   Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
 > {
-  const response = await fetch(REDDIT_TOP_URL, {
+  // Get OAuth2 access token
+  const accessToken = await getRedditAccessToken();
+
+  const response = await fetch(REDDIT_OAUTH_URL, {
     headers: {
-      "User-Agent": "RedditScraper/1.0 (Next.js App)",
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": `RedditScraper/1.0 (by /u/${process.env.REDDIT_USERNAME || "bot"})`,
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Reddit API error: ${response.status} ${response.statusText}`
+    );
   }
 
   const data: RedditApiResponse = await response.json();

@@ -2,6 +2,15 @@
 
 🌐 **Live Demo:** [https://reddit-scrapper-phi.vercel.app](https://reddit-scrapper-phi.vercel.app)
 
+## Quick Links
+
+| Service | Link |
+|---------|------|
+| 🌐 **Live App** | [reddit-scrapper-phi.vercel.app](https://reddit-scrapper-phi.vercel.app) |
+| 📂 **GitHub Repo** | [github.com/amirmuntaha/reddit_scrapper](https://github.com/amirmuntaha/reddit_scrapper) |
+| 🚀 **Vercel Dashboard** | [vercel.com/dashboard](https://vercel.com/amirmuntaha/reddit-scrapper) |
+| 🗄️ **Supabase Dashboard** | [supabase.com/dashboard](https://supabase.com/dashboard) |
+
 A Next.js application that scrapes the top 10 most popular image posts from Reddit daily and stores them in Supabase PostgreSQL. Designed to be deployed on Vercel with a daily cron job, providing content ready to be posted to Instagram.
 
 ## Features

@@ -190,6 +190,49 @@ export default async function Home({ searchParams }: PageProps) {
           </>
         )}
       </main>
+
+      {/* Footer with Quick Links */}
+      <footer className="border-t border-gray-800 bg-gray-900/30 mt-8">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+            <a
+              href="https://github.com/amirmuntaha/reddit_scrapper"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              📂 GitHub Repo
+            </a>
+            <span className="text-gray-700">•</span>
+            <a
+              href="https://vercel.com/amirmuntaha/reddit-scrapper"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              🚀 Vercel Dashboard
+            </a>
+            <span className="text-gray-700">•</span>
+            <a
+              href="https://supabase.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              🗄️ Supabase Dashboard
+            </a>
+            <span className="text-gray-700">•</span>
+            <a
+              href="https://vercel.com/amirmuntaha/reddit-scrapper/logs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              📋 Vercel Logs
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

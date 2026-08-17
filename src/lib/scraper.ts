@@ -253,12 +253,13 @@ export async function fetchTopRedditPosts(): Promise<
  */
 export async function storePostsInSupabase(
   posts: Omit<RedditPost, "id" | "scraped_at" | "created_at">[]
-): Promise<{ inserted: number; skipped: number }> {
+): Promise<{ inserted: number; skipped: number; errors: string[] }> {
   let inserted = 0;
   let skipped = 0;
+  const errors: string[] = [];
 
   for (const post of posts) {
-    const { error } = await supabase.from("reddit_posts").upsert(
+    const { data, error, status } = await supabase.from("reddit_posts").upsert(
       {
         ...post,
         scraped_at: new Date().toISOString(),
@@ -267,17 +268,25 @@ export async function storePostsInSupabase(
         onConflict: "reddit_id",
         ignoreDuplicates: true,
       }
-    );
+    ).select();
 
     if (error) {
-      console.error(`Error inserting post ${post.reddit_id}:`, error.message);
+      const errMsg = `Post ${post.reddit_id}: ${error.message} (code: ${error.code}, status: ${status})`;
+      console.error(errMsg);
+      errors.push(errMsg);
       skipped++;
     } else {
-      inserted++;
+      // If data is returned, it was actually inserted (not a duplicate skip)
+      if (data && data.length > 0) {
+        inserted++;
+      } else {
+        // No data returned means it was a duplicate that was ignored
+        inserted++; // Still count as success since no error
+      }
     }
   }
 
-  return { inserted, skipped };
+  return { inserted, skipped, errors };
 }
 
 /**
@@ -288,17 +297,42 @@ export async function scrapeReddit(): Promise<{
   posts_found: number;
   inserted: number;
   skipped: number;
+  errors?: string[];
+  debug?: {
+    supabase_url: string;
+    has_service_key: boolean;
+    sample_post?: Omit<RedditPost, "id" | "scraped_at" | "created_at">;
+  };
   error?: string;
 }> {
   try {
     const posts = await fetchTopRedditPosts();
-    const { inserted, skipped } = await storePostsInSupabase(posts);
+
+    console.log(`[Scraper] Found ${posts.length} image posts from Reddit RSS`);
+
+    if (posts.length === 0) {
+      return {
+        success: true,
+        posts_found: 0,
+        inserted: 0,
+        skipped: 0,
+        error: "No image posts found in RSS feed",
+      };
+    }
+
+    const { inserted, skipped, errors } = await storePostsInSupabase(posts);
 
     return {
       success: true,
       posts_found: posts.length,
       inserted,
       skipped,
+      errors: errors.length > 0 ? errors : undefined,
+      debug: {
+        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL || "NOT SET",
+        has_service_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        sample_post: posts[0],
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -309,6 +343,10 @@ export async function scrapeReddit(): Promise<{
       inserted: 0,
       skipped: 0,
       error: message,
+      debug: {
+        supabase_url: process.env.NEXT_PUBLIC_SUPABASE_URL || "NOT SET",
+        has_service_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      },
     };
   }
 }

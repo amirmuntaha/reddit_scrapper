@@ -23,9 +23,8 @@ test.describe("Homepage", () => {
   });
 
   test("should display the 'Run Scrape' button", async ({ page }) => {
-    const scrapeButton = page.locator('a:has-text("Run Scrape")');
+    const scrapeButton = page.locator('button:has-text("Run Scrape")');
     await expect(scrapeButton).toBeVisible();
-    await expect(scrapeButton).toHaveAttribute("href", "/api/scrape");
   });
 
   test("should show post count in header", async ({ page }) => {

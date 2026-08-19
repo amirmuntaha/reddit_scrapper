@@ -127,6 +127,11 @@ function parseAtomFeed(xml: string): ParsedPost[] {
       }
     }
 
+    // Also detect video by thumbnail URL — external-preview.redd.it = video
+    if (thumbnail && thumbnail.includes("external-preview.redd.it")) {
+      imageUrl = "__VIDEO__";
+    }
+
     // Extract published date
     const publishedMatch = entry.match(/<published>(.*?)<\/published>/);
     const published = publishedMatch ? publishedMatch[1] : "";
@@ -171,9 +176,10 @@ function isImageUrl(url: string): boolean {
 }
 
 /**
- * Gets the best image URL from a parsed post
- * Prioritizes: direct image URL > thumbnail (if it's a real image)
- * Rejects: video thumbnails from external-preview.redd.it (they return 403)
+ * Gets the best image URL from a parsed post.
+ * STRICT: Only accepts direct i.redd.it or i.imgur.com image links.
+ * Rejects: video posts, external-preview.redd.it, preview.redd.it fallbacks.
+ * This ensures only real, directly-loadable images are stored.
  */
 function getBestImageUrl(post: ParsedPost): string | null {
   // If marked as video, skip entirely
@@ -181,22 +187,13 @@ function getBestImageUrl(post: ParsedPost): string | null {
     return null;
   }
 
-  // Direct image link from content (i.redd.it, i.imgur.com) — these always work
+  // Only accept direct image links (i.redd.it, i.imgur.com)
+  // These are guaranteed to be actual image posts, not videos
   if (post.imageUrl && isImageUrl(post.imageUrl)) {
     return post.imageUrl;
   }
 
-  // Only use preview.redd.it thumbnails (NOT external-preview.redd.it)
-  // external-preview.redd.it URLs are video post thumbnails that return 403
-  if (post.thumbnail && isImageUrl(post.thumbnail)) {
-    if (post.thumbnail.includes("external-preview.redd.it")) {
-      // These are video thumbnails — skip them
-      return null;
-    }
-    // preview.redd.it URLs work fine for actual image posts
-    return post.thumbnail.replace(/width=\d+/, "width=1080");
-  }
-
+  // No fallback to thumbnails — they can be video previews
   return null;
 }
 

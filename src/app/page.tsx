@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
-import ScrapeButton from "./components/ScrapeButton";
+import Link from "next/link";
+import { Suspense } from "react";
 import InstagramButton from "./components/InstagramButton";
 import Pagination from "./components/Pagination";
-import { Suspense } from "react";
+import ScrapeButton from "./components/ScrapeButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -69,6 +70,9 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+const focusLink =
+  "rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
+
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page as string) || 1);
@@ -82,50 +86,261 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          {/* Mobile: stack vertically, Desktop: single row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-xs sm:text-sm">R</span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-bold">Reddit Scraper</h1>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <span className="text-xs sm:text-sm text-gray-400 hidden sm:inline">
-                {totalPosts} posts scraped
-              </span>
-              <span className="text-xs text-gray-400 sm:hidden">
-                {totalPosts}
-              </span>
-              <ScrapeButton />
-            </div>
+    <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 sm:py-10">
+      <section aria-labelledby="dashboard-title" className="border-b border-gray-800 pb-10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-400">
+              Discovery dashboard
+            </p>
+            <h1
+              id="dashboard-title"
+              className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl"
+            >
+              Reddit Scraper
+            </h1>
+            <p className="mt-4 text-base leading-7 text-gray-300 sm:text-lg">
+              This independent dashboard collects a narrow set of public Reddit
+              image-post records so a person can inspect possible source material.
+              It is not Reddit, an Instagram client, or an automatic publishing
+              service. A saved record is a discovery lead—not permission to reuse
+              media and not an editorial recommendation.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center justify-between gap-4 rounded-xl border border-gray-800 bg-gray-900/60 p-4 sm:flex-col sm:items-end">
+            <span className="text-sm text-gray-400">
+              {totalPosts} posts scraped
+            </span>
+            <ScrapeButton />
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 flex-1 w-full">
+        <div className="mt-6 rounded-xl border border-orange-500/30 bg-orange-500/10 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <h2 className="font-semibold text-orange-100">
+              Curation starts after discovery
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-orange-100/80">
+              Before publishing anything, verify the original source, rights,
+              context, safety, attribution, and platform requirements.
+            </p>
+          </div>
+          <Link
+            href="/guides/responsible-curation"
+            className={`mt-4 inline-flex shrink-0 items-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-400 sm:mt-0 ${focusLink}`}
+          >
+            Read the curation guide →
+          </Link>
+        </div>
+      </section>
+
+      <section aria-labelledby="record-meaning" className="py-10 sm:py-14">
+        <div className="max-w-3xl">
+          <h2 id="record-meaning" className="text-2xl font-bold tracking-tight sm:text-3xl">
+            What a dashboard record means
+          </h2>
+          <p className="mt-4 leading-7 text-gray-300">
+            Each card is a database snapshot created from a public Reddit RSS
+            entry. It includes the feed title, author name, subreddit, source
+            link, direct image URL, source publication time when available, and
+            the time this project stored the record. The displayed score is a
+            source-data field, not this project&apos;s rating or endorsement; the
+            current RSS workflow records zero when the feed does not provide a
+            score. The generated caption and download control are conveniences
+            for review only. They do not prove authorship, establish a license,
+            contact a creator, or post to Instagram.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+            <h3 className="font-semibold text-white">Source identity</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              The subreddit, author, title, and Reddit link help a reviewer return
+              to the source discussion and investigate provenance.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+            <h3 className="font-semibold text-white">Media reference</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              The image URL points to third-party media. Its presence here does
+              not transfer ownership or grant a right to republish it.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+            <h3 className="font-semibold text-white">Workflow state</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              Scrape time and the existing posted flag support operations. They
+              are not evidence that a human completed a rights or safety review.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="workflow" className="border-y border-gray-800 py-10 sm:py-14">
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+          <div>
+            <h2 id="workflow" className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Automated workflow and methodology
+            </h2>
+            <p className="mt-4 leading-7 text-gray-300">
+              The scheduled process handles discovery and storage. Human judgment
+              is still required for any use beyond this dashboard.
+            </p>
+          </div>
+          <ol className="grid gap-4 sm:grid-cols-2">
+            {[
+              [
+                "1. Fetch",
+                "A daily Vercel cron request—or the protected Run Scrape control—requests Reddit top-post RSS feeds for the day.",
+              ],
+              [
+                "2. Parse",
+                "The server extracts feed identifiers, titles, authors, subreddits, source links, dates, and candidate media URLs.",
+              ],
+              [
+                "3. Filter",
+                "Only direct static-image links from i.redd.it or i.imgur.com with recognized image extensions are accepted; video and preview fallbacks are rejected.",
+              ],
+              [
+                "4. Store and display",
+                "Up to ten qualifying records are deduplicated by Reddit ID in Supabase, then the dashboard retrieves recent records in scrape-time order with server-side pagination.",
+              ],
+            ].map(([title, copy]) => (
+              <li key={title} className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+                <h3 className="font-semibold text-orange-300">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-gray-400">{copy}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-8 rounded-xl border border-gray-800 bg-gray-900/70 p-5 sm:p-6">
+          <h3 className="font-semibold text-white">Why filter videos and previews?</h3>
+          <p className="mt-2 leading-7 text-gray-300">
+            A video thumbnail can look like a reusable still while actually being
+            a temporary preview, a low-resolution derivative, or only one frame
+            from a larger work. Preview hosts can also return transformed assets
+            rather than the source image a reviewer expects. Restricting ingestion
+            to recognizable direct image URLs makes the dashboard more predictable
+            and reduces broken or misleading media records. It is a technical
+            quality filter only—not a rights, accuracy, or suitability decision.
+          </p>
+        </div>
+      </section>
+
+      <section aria-labelledby="reuse-checklist" className="py-10 sm:py-14">
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+          <div>
+            <h2 id="reuse-checklist" className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Responsible reuse checklist
+            </h2>
+            <p className="mt-4 leading-7 text-gray-300">
+              Do not treat discovery as clearance. Complete a manual review for
+              every candidate and preserve what you learned.
+            </p>
+          </div>
+          <ul className="grid gap-3 text-sm leading-6 text-gray-300 sm:grid-cols-2">
+            {[
+              "Open the source post and verify that the record still matches it.",
+              "Trace the media to its creator or earliest reliable publication.",
+              "Ask the appropriate rights holder for permission or confirm a license that covers the planned use.",
+              "Record the permission terms, scope, date, and any required attribution.",
+              "Credit the creator and source clearly; a link alone is not always sufficient.",
+              "Check context, captions, names, dates, and claims against reliable sources.",
+              "Consider privacy, dignity, safety, minors, graphic material, and unintended harm.",
+              "Follow Reddit, Instagram, host, community, and any other applicable platform rules.",
+              "Write original commentary rather than copying the Reddit title or discussion as your own work.",
+              "Perform a final human review of image quality, accessibility text, cropping, and publication context.",
+            ].map((item) => (
+              <li key={item} className="flex gap-3 rounded-lg border border-gray-800 bg-gray-900/40 p-4">
+                <span className="mt-0.5 text-orange-400" aria-hidden="true">✓</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="faq" className="border-t border-gray-800 py-10 sm:py-14">
+        <h2 id="faq" className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Quick questions
+        </h2>
+        <div className="mt-7 grid gap-6 md:grid-cols-2">
+          <div>
+            <h3 className="font-semibold text-white">Does a card mean the image is free to use?</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              No. Public visibility and technical accessibility do not establish
+              reuse rights. Investigate ownership and obtain permission or a valid
+              license for the intended use.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">Does the dashboard review or publish automatically?</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              No. It automates RSS discovery, filtering, storage, and display.
+              Rights, verification, editorial judgment, and publication remain
+              manual responsibilities outside the scrape operation.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">What should I do next?</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              Use the practical steps in the{" "}
+              <Link
+                href="/guides/responsible-curation"
+                className={`font-medium text-orange-300 underline decoration-orange-400/50 underline-offset-4 hover:text-orange-200 ${focusLink}`}
+              >
+                Responsible Curation Guide
+              </Link>{" "}
+              to turn a discovery lead into a documented publication decision.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">How can a record be corrected or removed?</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-400">
+              Follow the project&apos;s{" "}
+              <Link
+                href="/contact"
+                className={`font-medium text-orange-300 underline decoration-orange-400/50 underline-offset-4 hover:text-orange-200 ${focusLink}`}
+              >
+                contact instructions
+              </Link>{" "}
+              and provide the dashboard record and original source URLs.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="saved-records" className="border-t border-gray-800 pt-10 sm:pt-14">
+        <div className="mb-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-400">
+              Database view
+            </p>
+            <h2 id="saved-records" className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Recent saved records
+            </h2>
+          </div>
+          <p className="text-sm text-gray-500">Newest scrape time first</p>
+        </div>
+
         {totalPosts === 0 ? (
-          <div className="text-center py-12 sm:py-20">
-            <div className="text-5xl sm:text-6xl mb-4">📭</div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">No posts scraped yet</h2>
-            <p className="text-gray-400 mb-6 text-sm sm:text-base px-4">
+          <div className="py-12 text-center sm:py-20">
+            <div className="mb-4 text-5xl sm:text-6xl" aria-hidden="true">📭</div>
+            <h2 className="mb-2 text-xl font-bold sm:text-2xl">No posts scraped yet</h2>
+            <p className="mb-6 px-4 text-sm text-gray-400 sm:text-base">
               Click &quot;Run Scrape&quot; to fetch the top Reddit posts of the day.
             </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {posts.map((post) => (
                 <article
                   key={post.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors"
+                  className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-colors hover:border-gray-700"
                 >
-                  {/* Image */}
                   <div className="relative aspect-square bg-gray-800">
                     <Image
                       src={post.image_url}
@@ -135,16 +350,15 @@ export default async function Home({ searchParams }: PageProps) {
                       unoptimized
                     />
                     {post.posted_to_instagram && (
-                      <div className="absolute top-2 right-2 bg-green-500/90 px-2 py-1 rounded text-xs font-medium">
+                      <div className="absolute right-2 top-2 rounded bg-green-500/90 px-2 py-1 text-xs font-medium">
                         ✓ Posted
                       </div>
                     )}
                   </div>
 
-                  {/* Content */}
                   <div className="p-3 sm:p-4">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-400">
                         r/{post.subreddit}
                       </span>
                       <span className="text-xs text-gray-500">
@@ -152,23 +366,23 @@ export default async function Home({ searchParams }: PageProps) {
                       </span>
                     </div>
 
-                    <h3 className="font-medium text-sm line-clamp-2 mb-2">
+                    <h3 className="mb-2 line-clamp-2 text-sm font-medium">
                       {post.title}
                     </h3>
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="truncate mr-2">u/{post.author}</span>
-                      <span className="flex-shrink-0">
+                      <span className="mr-2 truncate">u/{post.author}</span>
+                      <span className="shrink-0">
                         {new Date(post.scraped_at).toLocaleDateString()}
                       </span>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-gray-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 sm:flex-row sm:items-center">
                       <a
                         href={post.reddit_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-400 hover:text-blue-300"
+                        className={`text-xs text-blue-400 hover:text-blue-300 ${focusLink}`}
                       >
                         View on Reddit ↗
                       </a>
@@ -185,7 +399,6 @@ export default async function Home({ searchParams }: PageProps) {
               ))}
             </div>
 
-            {/* Pagination */}
             <Suspense fallback={null}>
               <Pagination
                 totalPosts={totalPosts}
@@ -195,47 +408,7 @@ export default async function Home({ searchParams }: PageProps) {
             </Suspense>
           </>
         )}
-      </main>
-
-      {/* Footer with Quick Links */}
-      <footer className="border-t border-gray-800 bg-gray-900/30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm">
-            <a
-              href="https://github.com/amirmuntaha/reddit_scrapper"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-            >
-              📂 GitHub
-            </a>
-            <a
-              href="https://vercel.com/amirmuntaha/reddit-scrapper"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-            >
-              🚀 Vercel
-            </a>
-            <a
-              href="https://supabase.com/dashboard"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-            >
-              🗄️ Supabase
-            </a>
-            <a
-              href="https://vercel.com/amirmuntaha/reddit-scrapper/logs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-            >
-              📋 Logs
-            </a>
-          </div>
-        </div>
-      </footer>
+      </section>
     </div>
   );
 }

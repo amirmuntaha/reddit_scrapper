@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
 const siteUrl = "https://reddit-scrapper-phi.vercel.app";
-const lastModified = "2026-08-17";
 
 const routes = [
   { path: "", changeFrequency: "daily", priority: 1 },
@@ -24,7 +23,6 @@ const routes = [
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map(({ path, changeFrequency, priority }) => ({
     url: `${siteUrl}${path}`,
-    lastModified,
     changeFrequency,
     priority,
   }));

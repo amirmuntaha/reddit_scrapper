@@ -103,78 +103,87 @@ export default function PostCard({
   }, []);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-colors hover:border-gray-700">
-      <div className="group relative">
-        <div className="relative aspect-square bg-gray-800">
-          <Image
-            src={post.image_url}
-            alt={post.title}
-            fill
-            className="object-cover"
-            referrerPolicy="no-referrer"
-            unoptimized
-          />
-          {post.posted_to_instagram && (
-            <div className="absolute right-2 top-2 rounded bg-green-500/90 px-2 py-1 text-xs font-medium">
-              ✓ Posted
-            </div>
-          )}
-          <span
-            aria-hidden="true"
-            className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-80 transition-opacity group-hover:opacity-100"
-          >
-            🔍 Full size
-          </span>
-        </div>
-
-        <div className="p-3 pb-0 sm:p-4 sm:pb-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-400">
-              r/{post.subreddit}
+    <>
+      <article className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-colors hover:border-gray-700">
+        <div className="group relative">
+          <div className="relative aspect-square bg-gray-800">
+            <Image
+              src={post.image_url}
+              alt={post.title}
+              fill
+              className="object-cover"
+              referrerPolicy="no-referrer"
+              unoptimized
+            />
+            {post.posted_to_instagram && (
+              <div className="absolute right-2 top-2 rounded bg-green-500/90 px-2 py-1 text-xs font-medium">
+                ✓ Posted
+              </div>
+            )}
+            <span
+              aria-hidden="true"
+              className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-80 transition-opacity group-hover:opacity-100"
+            >
+              🔍 Full size
             </span>
-            <span className="text-xs text-gray-500">⬆ {scoreLabel}</span>
           </div>
 
-          <h3 className="mb-2 line-clamp-2 text-sm font-medium group-hover:text-orange-200">
-            {post.title}
-          </h3>
+          <div className="p-3 pb-0 sm:p-4 sm:pb-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-400">
+                r/{post.subreddit}
+              </span>
+              <span className="text-xs text-gray-500">⬆ {scoreLabel}</span>
+            </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span className="mr-2 truncate">u/{post.author}</span>
-            <span className="shrink-0">{scrapedDateLabel}</span>
+            <h3 className="mb-2 line-clamp-2 text-sm font-medium group-hover:text-orange-200">
+              {post.title}
+            </h3>
+
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span className="mr-2 truncate">u/{post.author}</span>
+              <span className="shrink-0">{scrapedDateLabel}</span>
+            </div>
           </div>
-        </div>
 
-        {/* Covers the preview and metadata, but not the action row below it. */}
-        <button
-          type="button"
-          onClick={open}
-          aria-haspopup="dialog"
-          aria-label={`View full size image: ${post.title}`}
-          className={`absolute inset-0 cursor-zoom-in rounded-t-xl ${insetFocusRing}`}
-        />
-      </div>
-
-      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-        <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 sm:flex-row sm:items-center">
-          <a
-            href={post.reddit_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`rounded-sm text-xs text-blue-400 hover:text-blue-300 ${focusRing}`}
-          >
-            View on Reddit ↗
-          </a>
-          <InstagramButton
-            postId={post.id}
-            imageUrl={post.image_url}
-            caption={post.caption || post.title}
-            title={post.title}
-            alreadyPosted={post.posted_to_instagram}
+          {/* Covers the preview and metadata, but not the action row below it. */}
+          <button
+            type="button"
+            onClick={open}
+            aria-haspopup="dialog"
+            aria-label={`View full size image: ${post.title}`}
+            className={`absolute inset-0 cursor-zoom-in rounded-t-xl ${insetFocusRing}`}
           />
         </div>
-      </div>
 
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 sm:flex-row sm:items-center">
+            <a
+              href={post.reddit_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`rounded-sm text-xs text-blue-400 hover:text-blue-300 ${focusRing}`}
+            >
+              View on Reddit ↗
+            </a>
+            <InstagramButton
+              postId={post.id}
+              imageUrl={post.image_url}
+              caption={post.caption || post.title}
+              title={post.title}
+              alreadyPosted={post.posted_to_instagram}
+            />
+          </div>
+        </div>
+      </article>
+
+      {/*
+        Rendered as a sibling of <article> so the card element contains only card
+        content. Nesting the dialog inside it duplicated the subreddit and
+        "View on Reddit" text within the card's own subtree. A closed dialog is
+        display:none and an open one is in the top layer, so it never occupies a
+        grid cell.
+      */}
       <dialog
         ref={dialogRef}
         aria-label={`Full size image: ${post.title}`}
@@ -258,6 +267,6 @@ export default function PostCard({
           </a>
         </footer>
       </dialog>
-    </article>
+    </>
   );
 }

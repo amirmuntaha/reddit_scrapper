@@ -84,15 +84,27 @@ test.describe("Homepage", () => {
     const dialog = page.locator("dialog[open]");
     await expect(dialog).toHaveCount(0);
 
+    // One dialog per card, all closed. Asserted positively so the checks below
+    // cannot pass simply because no dialog is rendered at all.
+    const cardCount = await page.locator("article").count();
+    await expect(page.locator("dialog")).toHaveCount(cardCount);
+    await expect(page.locator("dialog:not([open])")).toHaveCount(cardCount);
+
     // The dialog must stay outside the card element, or its header/footer text
     // duplicates the card's own text inside <article>.
     await expect(page.locator("article dialog")).toHaveCount(0);
 
     // A closed dialog must be hidden: a plain `flex` utility would override the
-    // user-agent rule and leave it painted over the grid.
-    await expect(page.locator("dialog:not([open])").first()).toBeHidden();
+    // user-agent rule and leave it painted over the grid, intercepting clicks.
+    // Checked at desktop width too, where a stray dialog covers different cards.
+    for (const dialogEl of await page.locator("dialog").all()) {
+      await expect(dialogEl).toBeHidden();
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.locator("dialog").first()).toBeHidden();
+    await page.setViewportSize({ width: 380, height: 640 });
 
-    // Clicking near the top edge fails if anything overlays the card.
+    // Clicking near this card's top-left corner fails if anything overlays it.
     await cardButton.click({ position: { x: 12, y: 12 } });
     await expect(dialog).toHaveCount(1);
 

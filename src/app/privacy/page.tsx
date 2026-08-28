@@ -104,7 +104,10 @@ export default function PrivacyPage() {
               Google AdSense is <strong className="text-white">enabled</strong> on this
               site. Ad units are rendered only on these article pages:{" "}
               {AD_ELIGIBLE_ROUTES.join(", ")}. No ad unit is rendered on{" "}
-              {AD_EXCLUDED_ROUTES.join(", ")}. Because browsers keep a script once it
+              {AD_EXCLUDED_ROUTES.map((route) =>
+                route === "/" ? "the dashboard (/)" : route
+              ).join(", ")}
+              . Because browsers keep a script once it
               has loaded, the advertising library can remain active for the rest of a
               visit after you move from an article page to one of those pages, even
               though no ad is shown there.
@@ -122,9 +125,11 @@ export default function PrivacyPage() {
               <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className={linkStyles}>Google Ads Settings ↗</a>{" "}
               or opt out of some third-party vendors&apos; use of advertising cookies at{" "}
               <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className={linkStyles}>aboutads.info ↗</a>.
-              This site does not run its own consent-management platform; any consent
-              message required for your region is the one configured for this property
-              in Google&apos;s AdSense privacy and messaging tools.
+              This site does not run its own consent-management platform. Where local
+              law requires consent before advertising cookies are used, the operator is
+              required to configure a consent message for this property through
+              Google&apos;s AdSense privacy and messaging tools; if none is configured,
+              no consent message will appear.
             </p>
           </>
         ) : (

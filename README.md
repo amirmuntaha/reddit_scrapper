@@ -23,7 +23,7 @@ A Next.js application that scrapes the top 10 most popular image posts from Redd
 - 🔒 **Secure Cron Endpoint** — Protected by `CRON_SECRET` bearer token
 - 📚 **Original Content & Policy Pages** — Curation guide, about, editorial policy, contact, privacy, terms
 - 🔎 **SEO Metadata** — Per-route canonical/Open Graph tags, `robots.txt`, `sitemap.xml`
-- 💰 **Optional AdSense** — Ads render only on article pages, and only when a real publisher ID is configured
+- 💰 **Optional AdSense** — Ads render only on article pages, and only when both AdSense variables are set
 
 ## Public Pages
 
@@ -37,7 +37,7 @@ A Next.js application that scrapes the top 10 most popular image posts from Redd
 | `/privacy` | Data handling, third-party hosts, advertising disclosures | ❌ No |
 | `/terms` | Acceptable use, third-party rights, disclaimers | ❌ No |
 | `/robots.txt`, `/sitemap.xml` | Crawler directives and canonical URL list | — |
-| `/ads.txt` | Authorized seller line (404 until a publisher ID is set) | — |
+| `/ads.txt` | Authorized seller line (404 until both AdSense variables are set) | — |
 
 ## Tech Stack
 

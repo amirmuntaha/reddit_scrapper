@@ -7,8 +7,12 @@ import { AD_ELIGIBLE_ROUTES, AD_EXCLUDED_ROUTES } from "../src/lib/adsense";
  *
  * The advertising assertions adapt to the deployed state: `/ads.txt` returns 200
  * only when a publisher ID and ad slot are both configured, so it is used to
- * decide whether ad units are expected on the eligible pages. That keeps the
- * "excluded pages have no ads" checks meaningful instead of passing trivially.
+ * decide whether ad units are expected on the eligible pages.
+ *
+ * The excluded-route checks assert zero ad markup in both states. They only carry
+ * real signal against a configured deployment; on an ad-free target they simply
+ * confirm the default. Run the suite against a configured preview URL to exercise
+ * the placement split itself.
  */
 
 const CONTENT_ROUTES = [
@@ -28,7 +32,12 @@ const NAV_LINKS = [
   "/contact",
 ];
 
-const AD_LOADER = 'script[src*="googlesyndication.com"]';
+/**
+ * Match the loader this app renders by its stable id rather than by host: once
+ * adsbygoogle.js runs it injects further scripts from the same domain, which
+ * would make a host-based count racy.
+ */
+const AD_LOADER = "script#adsbygoogle-loader";
 
 async function skipIfProtected(page: Page) {
   const title = await page.title();
@@ -138,16 +147,19 @@ test.describe("Ad placement rules", () => {
       const units = page.locator("ins.adsbygoogle");
 
       if (enabled) {
-        // Configured deployments must render at least one labelled unit and the loader.
-        expect(await units.count()).toBeGreaterThan(0);
+        // Exactly one labelled unit per article page, plus this app's loader.
+        await expect(units).toHaveCount(1);
         await expect(page.locator(AD_LOADER)).toHaveCount(1);
-        await expect(page.getByText("Advertisement", { exact: true }).first()).toBeVisible();
 
-        // Every unit must carry the publisher ID and a slot.
-        for (const unit of await units.all()) {
-          await expect(unit).toHaveAttribute("data-ad-client", /^ca-pub-\d+$/);
-          await expect(unit).toHaveAttribute("data-ad-slot", /^\d+$/);
-        }
+        // The label must exist in the markup. It is not asserted as *visible*:
+        // globals.css intentionally collapses the wrapper on an unfilled ad.
+        await expect(
+          page.locator(".ad-unit").getByText("Advertisement", { exact: true })
+        ).toHaveCount(1);
+
+        // The unit must carry the publisher ID and a slot.
+        await expect(units).toHaveAttribute("data-ad-client", /^ca-pub-\d+$/);
+        await expect(units).toHaveAttribute("data-ad-slot", /^\d+$/);
       } else {
         // Ad-free deployments must not ship any ad markup or loader.
         await expect(units).toHaveCount(0);

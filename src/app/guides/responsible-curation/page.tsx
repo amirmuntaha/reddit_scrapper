@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createPageMetadata } from "../../../lib/metadata";
+import AdSenseLoader from "../../components/AdSenseLoader";
+import ContentAd from "../../components/ContentAd";
 import {
   BulletList,
   ContentSection,
@@ -26,6 +28,8 @@ export default function ResponsibleCurationGuide() {
       title="Responsible Reddit image curation"
       intro="A dashboard record can help you discover an image, but discovery is only the beginning. This guide explains the human checks needed before deciding whether and how to feature third-party media."
     >
+      <AdSenseLoader />
+
       <Notice>
         This guide offers educational workflow guidance, not legal advice. Rights,
         privacy, and platform obligations vary by image, creator, location, and
@@ -163,6 +167,8 @@ export default function ResponsibleCurationGuide() {
         </BulletList>
       </ContentSection>
 
+      <ContentAd />
+
       <ContentSection title="4. Add original value instead of duplicating the source">
         <p>
           Responsible curation should help the audience understand why an item matters.
@@ -249,6 +255,8 @@ export default function ResponsibleCurationGuide() {
           into approval.
         </p>
       </ContentSection>
+
+      <ContentAd />
 
       <ContentSection title="Continue the workflow">
         <p>

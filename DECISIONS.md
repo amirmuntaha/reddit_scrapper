@@ -101,3 +101,44 @@ This document captures the "why" behind key technical decisions, so future devel
 - Tests verify the real deployed app
 - Playwright can run from CI or locally
 - Tests gracefully skip when Vercel Deployment Protection is active
+
+
+## Monetization / AdSense Readiness (August 2026)
+
+### Decision: Original content pages before any ad code
+**Why:**
+- Google disallows ads on screens without publisher content, low-value screens, and
+  automatically generated content lacking manual review or curation
+  (https://support.google.com/publisherpolicies/answer/11112688)
+- It also disallows ads on scraped/replicated content that adds no curation or commentary
+  (https://support.google.com/publisherpolicies/answer/11190248)
+- The dashboard is mostly third-party Reddit media, so the site needed genuinely original
+  material: `/guides/responsible-curation`, `/about`, plus trust pages
+
+### Decision: Ads are environment-gated, never hardcoded
+**Why:**
+- `src/lib/adsense.ts` validates `NEXT_PUBLIC_ADSENSE_CLIENT_ID` (`ca-pub-…`) and
+  `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE`; if either is missing/invalid, no loader script,
+  no `<ins>` element, and no `ads.txt` are emitted
+- Avoids shipping placeholder publisher IDs and keeps preview/local builds ad-free
+- The privacy policy reads the same helper, so disclosures can never contradict the build
+
+### Decision: Ad units live in pages, not the root layout
+**Why:**
+- Per-page `next/script` (`afterInteractive`) loads the library only on pages that render it
+- Prevents the loader from reaching `/`, `/editorial-policy`, `/contact`, `/privacy`, `/terms`
+- `AD_ELIGIBLE_ROUTES` / `AD_EXCLUDED_ROUTES` document the intent in one place
+- Units are labelled "Advertisement" and kept away from navigation, pagination, and the
+  download button, per the ad placement policy
+  (https://support.google.com/adsense/answer/1346295)
+
+### Decision: `/ads.txt` as a route handler, not a static file
+**Why:**
+- The line must contain the real publisher ID, which lives in an env var
+- Returning 404 when unconfigured is safer than serving a placeholder or empty file
+
+### Decision: No cookie-consent banner yet
+**Why:**
+- With ads disabled there are no advertising cookies and no first-party tracking to consent to
+- A CMP must be added before enabling ads for EEA/UK/Swiss traffic
+  (https://support.google.com/adsense/answer/7670013)

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createPageMetadata } from "../../lib/metadata";
+import AdSenseLoader from "../components/AdSenseLoader";
+import ContentAd from "../components/ContentAd";
 import {
   BulletList,
   ContentSection,
@@ -25,6 +27,8 @@ export default function AboutPage() {
       title="A transparent image-discovery workflow"
       intro="Reddit Scraper is a small, independent Next.js project that turns selected public RSS entries into a reviewable dashboard. Its purpose is to make discovery organized without pretending that automation can replace editorial judgment."
     >
+      <AdSenseLoader />
+
       <ContentSection title="Why this project exists">
         <p>
           Finding candidate images across fast-moving communities can be repetitive.
@@ -79,6 +83,8 @@ export default function AboutPage() {
           publication.
         </p>
       </ContentSection>
+
+      <ContentAd />
 
       <ContentSection title="Limitations and corrections">
         <p>

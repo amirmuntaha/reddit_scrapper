@@ -44,7 +44,7 @@ This document describes the system architecture for AI agents working on this co
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Framework | Next.js 15 (App Router) | TypeScript, `src/` directory |
+| Framework | Next.js 16 (App Router) | TypeScript, `src/` directory |
 | Styling | Tailwind CSS 4 | Dark theme, responsive |
 | Database | Supabase PostgreSQL | Service role key for server-side |
 | Hosting | Vercel | Auto-deploy from GitHub `main` branch |
@@ -79,6 +79,22 @@ This document describes the system architecture for AI agents working on this co
 4. **Strict image filtering** — Only `i.redd.it`/`i.imgur.com` direct links accepted. No thumbnail fallbacks.
 5. **Server-side pagination** — Supabase `.range()` instead of loading all posts.
 6. **Download proxy** — `/api/download` route proxies images to bypass CORS for browser downloads.
+7. **Shared chrome in root layout** — `SiteHeader`/`SiteFooter` render around every route; pages own their `<main>` content.
+8. **Ads gated per route** — `src/lib/adsense.ts` decides if ads exist at all; `AdSenseLoader`/`ContentAd` are imported only by `/guides/responsible-curation` and `/about`, never by the root layout.
+
+## Public Content Routes
+
+| Route | Rendering | Notes |
+|-------|-----------|-------|
+| `/` | Dynamic (`force-dynamic`) | Supabase-backed dashboard; no ads |
+| `/guides/responsible-curation` | Static | Long-form original article; ad-eligible |
+| `/about` | Static | Project scope and limits; ad-eligible |
+| `/editorial-policy` | Static | Discovery/filter/correction transparency |
+| `/contact` | Static | GitHub issue workflow |
+| `/privacy` | Static | Reads `isAdSenseEnabled()` for accurate disclosures |
+| `/terms` | Static | Acceptable use and disclaimers |
+| `/robots.txt`, `/sitemap.xml` | Static | Metadata routes (`robots.ts`, `sitemap.ts`) |
+| `/ads.txt` | Route handler | Emits authorized-seller line, else 404 |
 
 ## Environment Variables
 
@@ -91,3 +107,5 @@ This document describes the system architecture for AI agents working on this co
 | `REDDIT_RSS_USER` | ⚡ Recommended | Reddit username for RSS auth |
 | `INSTAGRAM_USER_ID` | ❌ Optional | For future Instagram Graph API integration |
 | `INSTAGRAM_ACCESS_TOKEN` | ❌ Optional | For future Instagram Graph API integration |
+| `NEXT_PUBLIC_ADSENSE_CLIENT_ID` | ❌ Optional | `ca-pub-…` publisher ID; empty = fully ad-free |
+| `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE` | ❌ Optional | Display ad unit ID used by `ContentAd` |

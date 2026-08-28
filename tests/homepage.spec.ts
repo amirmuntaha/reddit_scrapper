@@ -77,6 +77,10 @@ test.describe("Homepage", () => {
       "No scraped posts available to open"
     );
 
+    // A narrow viewport guarantees a typical Reddit image overflows the dialog,
+    // so the scroll behaviour below is actually exercised.
+    await page.setViewportSize({ width: 380, height: 640 });
+
     const dialog = page.locator("dialog[open]");
     await expect(dialog).toHaveCount(0);
 
@@ -86,10 +90,14 @@ test.describe("Homepage", () => {
     // The image must render at its intrinsic size, not scaled to fit.
     const image = dialog.locator("img").first();
     await expect(image).toBeVisible();
-    await page.waitForFunction(() => {
-      const img = document.querySelector("dialog[open] img");
-      return img instanceof HTMLImageElement && img.complete;
-    });
+    await page.waitForFunction(
+      () => {
+        const img = document.querySelector("dialog[open] img");
+        return img instanceof HTMLImageElement && img.complete;
+      },
+      undefined,
+      { timeout: 10000 }
+    );
 
     const sizing = await image.evaluate((node: HTMLImageElement) => {
       const rect = node.getBoundingClientRect();

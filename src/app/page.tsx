@@ -2,25 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { Suspense } from "react";
 import Pagination from "./components/Pagination";
-import PostCard from "./components/PostCard";
+import PostCard, { type DashboardPost } from "./components/PostCard";
 import ScrapeButton from "./components/ScrapeButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-interface RedditPost {
-  id: number;
+interface RedditPost extends DashboardPost {
   reddit_id: string;
-  title: string;
-  image_url: string;
-  caption: string | null;
-  subreddit: string;
-  author: string;
-  reddit_url: string;
-  score: number;
-  posted_to_instagram: boolean;
   reddit_created_at: string | null;
-  scraped_at: string;
 }
 
 async function getTotalPostCount(): Promise<number> {
@@ -336,7 +326,16 @@ export default async function Home({ searchParams }: PageProps) {
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  // Formatted here, on the server, so the rendered markup does
+                  // not vary with the visitor's locale or time zone.
+                  scoreLabel={post.score.toLocaleString("en-US")}
+                  scrapedDateLabel={new Date(post.scraped_at).toLocaleDateString(
+                    "en-US"
+                  )}
+                />
               ))}
             </div>
 

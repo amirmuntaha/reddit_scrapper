@@ -18,9 +18,12 @@ interface ContentAdProps {
  * A single labelled in-article ad unit.
  *
  * Renders nothing unless a real publisher ID and slot are configured, so the
- * markup is absent (not just hidden) on an unconfigured or ad-free deployment.
- * Keep instances away from navigation, buttons, and download links, and reserve
- * height to limit layout shift.
+ * markup is absent (not just hidden) on an ad-free deployment. Only use this on
+ * routes listed in AD_ELIGIBLE_ROUTES, alongside <AdSenseLoader />, and keep it
+ * away from navigation, pagination, and download controls.
+ *
+ * An unfilled unit is collapsed by the `[data-ad-status="unfilled"]` rule in
+ * globals.css so no empty labelled frame is shown.
  */
 export default function ContentAd({ className = "" }: ContentAdProps) {
   const clientId = getAdSenseClientId();
@@ -46,11 +49,8 @@ export default function ContentAd({ className = "" }: ContentAdProps) {
   }
 
   return (
-    <aside
-      aria-label="Advertisement"
-      className={`my-10 border-y border-gray-800 py-5 ${className}`}
-    >
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+    <div className={`ad-unit my-10 border-y border-gray-800 py-5 ${className}`}>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
         Advertisement
       </p>
       <ins
@@ -61,6 +61,6 @@ export default function ContentAd({ className = "" }: ContentAdProps) {
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
-    </aside>
+    </div>
   );
 }

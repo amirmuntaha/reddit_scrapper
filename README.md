@@ -114,13 +114,18 @@ NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE=XXXXXXXXXX             # AdSense > Ads > By ad 
 
 Add them in **Vercel > Settings > Environment Variables** and redeploy. Then:
 
-- ad units render only on the routes in `AD_ELIGIBLE_ROUTES` (`src/lib/adsense.ts`)
+- one ad unit renders on each route in `AD_ELIGIBLE_ROUTES` (`src/lib/adsense.ts`)
 - `/ads.txt` starts serving `google.com, pub-…, DIRECT, f08c47fec0942fa0`
 - the privacy policy automatically switches to its "ads enabled" disclosures
 
-Invalid or missing values mean **no** loader script, **no** `<ins>` markup, and a 404 `/ads.txt`.
-To change which pages may show ads, edit `AD_ELIGIBLE_ROUTES` and render `<AdSenseLoader />`
-plus `<ContentAd />` in that page — never in the root layout, so excluded pages stay clean.
+Invalid or missing values mean **no** loader script, **no** `<ins>` markup, and a 404 `/ads.txt`
+(a value that is set but malformed also logs a warning). To change which pages may show ads,
+edit `AD_ELIGIBLE_ROUTES` and render `<AdSenseLoader />` plus `<ContentAd />` in that page —
+never in the root layout, so excluded pages stay clean.
+
+> ⚠️ Keep **Auto ads off** in the AdSense account. `next/script` does not unload a script, so
+> after an in-app navigation from an article page the library stays loaded for that session;
+> Auto ads could then place ads on the dashboard or policy pages without any code change.
 
 > ⚠️ Approval is Google's decision. Pages built mainly from scraped third-party media
 > need real curation and original commentary; see `/guides/responsible-curation`.

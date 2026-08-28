@@ -256,8 +256,6 @@ export default function ResponsibleCurationGuide() {
         </p>
       </ContentSection>
 
-      <ContentAd />
-
       <ContentSection title="Continue the workflow">
         <p>
           Return to the <Link href="/" className={linkStyles}>dashboard</Link> to review

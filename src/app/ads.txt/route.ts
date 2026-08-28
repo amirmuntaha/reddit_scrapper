@@ -1,20 +1,27 @@
 import { getAdsTxtPublisherId } from "../../lib/adsense";
 
 /**
- * Serves ads.txt only when a real AdSense publisher ID is configured.
+ * Serves ads.txt only when advertising is fully configured.
  *
  * Google's authorized-inventory policy requires publishers to be listed as an
  * authorized seller when a domain uses ads.txt, so an unconfigured deployment
  * returns 404 instead of an empty or placeholder file.
  * https://support.google.com/adsense/answer/12171612
  */
+export const dynamic = "force-static";
+
+const CACHE_CONTROL = "public, max-age=3600";
+
 export function GET() {
   const publisherId = getAdsTxtPublisherId();
 
   if (!publisherId) {
-    return new Response("Not found", {
+    return new Response("Not found\n", {
       status: 404,
-      headers: { "content-type": "text/plain; charset=utf-8" },
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": CACHE_CONTROL,
+      },
     });
   }
 
@@ -22,7 +29,7 @@ export function GET() {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=3600",
+      "cache-control": CACHE_CONTROL,
     },
   });
 }

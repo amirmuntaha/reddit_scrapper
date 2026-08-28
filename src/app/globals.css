@@ -26,3 +26,10 @@ body {
   background: #c2410c;
   color: #ffffff;
 }
+
+
+/* Collapse an ad wrapper when AdSense reports no creative was filled, so an
+   empty labelled frame is never shown. */
+.ad-unit:has(> ins.adsbygoogle[data-ad-status="unfilled"]) {
+  display: none;
+}

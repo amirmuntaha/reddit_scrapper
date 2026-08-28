@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { AD_ELIGIBLE_ROUTES, isAdSenseEnabled } from "../../lib/adsense";
+import {
+  AD_ELIGIBLE_ROUTES,
+  AD_EXCLUDED_ROUTES,
+  isAdSenseEnabled,
+} from "../../lib/adsense";
 import { createPageMetadata } from "../../lib/metadata";
 import {
   BulletList,
@@ -98,9 +102,12 @@ export default function PrivacyPage() {
           <>
             <p>
               Google AdSense is <strong className="text-white">enabled</strong> on this
-              site. Ad units appear only on the following article pages:{" "}
-              {AD_ELIGIBLE_ROUTES.join(", ")}. The dashboard, editorial policy,
-              contact, privacy, and terms pages do not load advertising code.
+              site. Ad units are rendered only on these article pages:{" "}
+              {AD_ELIGIBLE_ROUTES.join(", ")}. No ad unit is rendered on{" "}
+              {AD_EXCLUDED_ROUTES.join(", ")}. Because browsers keep a script once it
+              has loaded, the advertising library can remain active for the rest of a
+              visit after you move from an article page to one of those pages, even
+              though no ad is shown there.
             </p>
             <p>
               Third-party vendors, including Google, use cookies to serve ads based on
@@ -115,8 +122,9 @@ export default function PrivacyPage() {
               <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className={linkStyles}>Google Ads Settings ↗</a>{" "}
               or opt out of some third-party vendors&apos; use of advertising cookies at{" "}
               <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className={linkStyles}>aboutads.info ↗</a>.
-              Where local law requires consent for advertising cookies, a consent
-              message is presented before personalized ads are served.
+              This site does not run its own consent-management platform; any consent
+              message required for your region is the one configured for this property
+              in Google&apos;s AdSense privacy and messaging tools.
             </p>
           </>
         ) : (

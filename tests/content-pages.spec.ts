@@ -1,9 +1,14 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { AD_ELIGIBLE_ROUTES, AD_EXCLUDED_ROUTES } from "../src/lib/adsense";
 
 /**
  * Covers the public content/policy routes, shared navigation, crawler files, and
- * the rule that advertising code must never appear on the dashboard or on the
- * editorial-policy, contact, privacy, and terms pages.
+ * the ad placement rules.
+ *
+ * The advertising assertions adapt to the deployed state: `/ads.txt` returns 200
+ * only when a publisher ID and ad slot are both configured, so it is used to
+ * decide whether ad units are expected on the eligible pages. That keeps the
+ * "excluded pages have no ads" checks meaningful instead of passing trivially.
  */
 
 const CONTENT_ROUTES = [
@@ -15,9 +20,6 @@ const CONTENT_ROUTES = [
   { path: "/terms", heading: /Terms of use/i },
 ];
 
-/** Routes that must never contain ad markup or the AdSense loader. */
-const AD_FREE_ROUTES = ["/", "/editorial-policy", "/contact", "/privacy", "/terms"];
-
 const NAV_LINKS = [
   "/",
   "/guides/responsible-curation",
@@ -25,6 +27,8 @@ const NAV_LINKS = [
   "/editorial-policy",
   "/contact",
 ];
+
+const AD_LOADER = 'script[src*="googlesyndication.com"]';
 
 async function skipIfProtected(page: Page) {
   const title = await page.title();
@@ -34,21 +38,40 @@ async function skipIfProtected(page: Page) {
   );
 }
 
+async function skipIfProtectedRequest(request: APIRequestContext, path: string) {
+  const response = await request.get(path, { maxRedirects: 0 });
+  test.skip(
+    response.status() === 401 || response.status() === 403 || response.status() === 307,
+    "Deployment protection is enabled — disable it in Vercel Settings or use a public production URL"
+  );
+  return response;
+}
+
+/** True when the deployment has advertising configured. */
+async function adsEnabled(request: APIRequestContext): Promise<boolean> {
+  const response = await request.get("/ads.txt");
+  return response.status() === 200;
+}
+
 test.describe("Content and policy pages", () => {
   for (const route of CONTENT_ROUTES) {
     test(`${route.path} loads with its own heading and metadata`, async ({ page }) => {
       const response = await page.goto(route.path);
       await skipIfProtected(page);
 
-      expect(response?.status()).toBeLessThan(400);
+      expect(response, "navigation should return a response").not.toBeNull();
+      expect(response!.status()).toBeLessThan(400);
       await expect(page.locator("h1")).toHaveText(route.heading);
 
       // Each page must declare its own canonical URL and description.
-      const canonical = page.locator('link[rel="canonical"]');
-      await expect(canonical).toHaveAttribute("href", new RegExp(`${route.path}$`));
-
-      const description = page.locator('meta[name="description"]');
-      await expect(description).toHaveAttribute("content", /.{40,}/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        new RegExp(`${route.path}$`)
+      );
+      await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        "content",
+        /.{40,}/
+      );
     });
   }
 
@@ -73,32 +96,70 @@ test.describe("Content and policy pages", () => {
     await expect(footer.locator('a[href="/terms"]')).toBeVisible();
   });
 
-  test("privacy policy discloses the current advertising state", async ({ page }) => {
+  test("privacy policy discloses the current advertising state", async ({
+    page,
+    request,
+  }) => {
     await page.goto("/privacy");
     await skipIfProtected(page);
 
-    await expect(page.getByRole("heading", { name: /Advertising and cookies/i })).toBeVisible();
-    await expect(page.locator("body")).toContainText(/AdSense/i);
+    await expect(
+      page.getByRole("heading", { name: /Advertising and cookies/i })
+    ).toBeVisible();
+
+    const enabled = await adsEnabled(request);
+    await expect(page.locator("main")).toContainText(
+      enabled ? /AdSense is\s+enabled/i : /not currently enabled/i
+    );
   });
 });
 
 test.describe("Ad placement rules", () => {
-  for (const path of AD_FREE_ROUTES) {
+  for (const path of AD_EXCLUDED_ROUTES) {
     test(`${path} contains no ad code`, async ({ page }) => {
       await page.goto(path);
       await skipIfProtected(page);
 
       await expect(page.locator("ins.adsbygoogle")).toHaveCount(0);
-      await expect(
-        page.locator('script[src*="googlesyndication.com"]')
-      ).toHaveCount(0);
+      await expect(page.locator(AD_LOADER)).toHaveCount(0);
+    });
+  }
+
+  for (const path of AD_ELIGIBLE_ROUTES) {
+    test(`${path} matches the deployment's advertising state`, async ({
+      page,
+      request,
+    }) => {
+      const enabled = await adsEnabled(request);
+
+      await page.goto(path);
+      await skipIfProtected(page);
+
+      const units = page.locator("ins.adsbygoogle");
+
+      if (enabled) {
+        // Configured deployments must render at least one labelled unit and the loader.
+        expect(await units.count()).toBeGreaterThan(0);
+        await expect(page.locator(AD_LOADER)).toHaveCount(1);
+        await expect(page.getByText("Advertisement", { exact: true }).first()).toBeVisible();
+
+        // Every unit must carry the publisher ID and a slot.
+        for (const unit of await units.all()) {
+          await expect(unit).toHaveAttribute("data-ad-client", /^ca-pub-\d+$/);
+          await expect(unit).toHaveAttribute("data-ad-slot", /^\d+$/);
+        }
+      } else {
+        // Ad-free deployments must not ship any ad markup or loader.
+        await expect(units).toHaveCount(0);
+        await expect(page.locator(AD_LOADER)).toHaveCount(0);
+      }
     });
   }
 });
 
 test.describe("Crawler files", () => {
   test("robots.txt allows crawling and points to the sitemap", async ({ request }) => {
-    const response = await request.get("/robots.txt");
+    const response = await skipIfProtectedRequest(request, "/robots.txt");
     expect(response.status()).toBe(200);
 
     const body = await response.text();
@@ -108,7 +169,7 @@ test.describe("Crawler files", () => {
   });
 
   test("sitemap.xml lists the public content routes", async ({ request }) => {
-    const response = await request.get("/sitemap.xml");
+    const response = await skipIfProtectedRequest(request, "/sitemap.xml");
     expect(response.status()).toBe(200);
 
     const body = await response.text();
@@ -117,16 +178,16 @@ test.describe("Crawler files", () => {
     }
   });
 
-  test("ads.txt is either absent or a valid authorized-seller line", async ({ request }) => {
-    const response = await request.get("/ads.txt");
+  test("ads.txt is either absent or a valid authorized-seller line", async ({
+    request,
+  }) => {
+    const response = await skipIfProtectedRequest(request, "/ads.txt");
+    expect([200, 404]).toContain(response.status());
 
-    if (response.status() === 404) {
-      return; // Advertising is not configured — expected default.
+    if (response.status() === 200) {
+      expect(await response.text()).toMatch(
+        /^google\.com,\s*pub-\d+,\s*DIRECT,\s*f08c47fec0942fa0/m
+      );
     }
-
-    expect(response.status()).toBe(200);
-    expect(await response.text()).toMatch(
-      /^google\.com,\s*pub-\d+,\s*DIRECT,\s*f08c47fec0942fa0/m
-    );
   });
 });

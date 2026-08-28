@@ -125,17 +125,26 @@ This document captures the "why" behind key technical decisions, so future devel
 
 ### Decision: Ad units live in pages, not the root layout
 **Why:**
-- Per-page `next/script` (`afterInteractive`) loads the library only on pages that render it
-- Prevents the loader from reaching `/`, `/editorial-policy`, `/contact`, `/privacy`, `/terms`
-- `AD_ELIGIBLE_ROUTES` / `AD_EXCLUDED_ROUTES` document the intent in one place
+- Per-page `next/script` (`afterInteractive`) requests the library only on pages that render it
+- No ad markup is ever rendered on `/`, `/editorial-policy`, `/contact`, `/privacy`, `/terms`
+- `AD_ELIGIBLE_ROUTES` / `AD_EXCLUDED_ROUTES` are the single source of truth, consumed by the
+  privacy policy text and by `tests/content-pages.spec.ts`
+
+**Known limitation:** `next/script` never unloads a script. After a client-side navigation from
+an article page, the ad library remains loaded for that session even on excluded pages (no ad
+markup is rendered there). Therefore **account-level Auto ads must stay OFF** — Auto ads are a
+dashboard toggle and would bypass the route split entirely. The privacy policy states this.
 - Units are labelled "Advertisement" and kept away from navigation, pagination, and the
   download button, per the ad placement policy
   (https://support.google.com/adsense/answer/1346295)
 
-### Decision: `/ads.txt` as a route handler, not a static file
+### Decision: `/ads.txt` as a static route handler, not a checked-in file
 **Why:**
 - The line must contain the real publisher ID, which lives in an env var
 - Returning 404 when unconfigured is safer than serving a placeholder or empty file
+- `export const dynamic = "force-static"` prerenders it, matching `robots.txt`/`sitemap.xml`
+- Gated on `isAdSenseEnabled()` (not the publisher ID alone) so `ads.txt`, the rendered units,
+  and the privacy policy can never disagree about whether ads are live
 
 ### Decision: No cookie-consent banner yet
 **Why:**

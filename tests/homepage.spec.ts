@@ -87,17 +87,28 @@ test.describe("Homepage", () => {
     await cardButton.click();
     await expect(dialog).toHaveCount(1);
 
+    // Wait for either the loaded image or the explicit failure fallback, so a
+    // dead source host fails with a clear message instead of a bare timeout.
+    const outcome = await page.waitForFunction(
+      () => {
+        const img = document.querySelector("dialog[open] img");
+        if (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0) {
+          return "loaded";
+        }
+        const fallback = document.querySelector("dialog[open] p a");
+        return fallback ? "failed" : false;
+      },
+      undefined,
+      { timeout: 15000 }
+    );
+    expect(
+      await outcome.jsonValue(),
+      "the source image should still be reachable"
+    ).toBe("loaded");
+
     // The image must render at its intrinsic size, not scaled to fit.
     const image = dialog.locator("img").first();
     await expect(image).toBeVisible();
-    await page.waitForFunction(
-      () => {
-        const img = document.querySelector("dialog[open] img");
-        return img instanceof HTMLImageElement && img.complete;
-      },
-      undefined,
-      { timeout: 10000 }
-    );
 
     const sizing = await image.evaluate((node: HTMLImageElement) => {
       const rect = node.getBoundingClientRect();
@@ -113,14 +124,16 @@ test.describe("Homepage", () => {
       };
     });
 
-    expect(sizing.naturalWidth).toBeGreaterThan(0);
     expect(sizing.renderedWidth).toBe(sizing.naturalWidth);
     expect(sizing.overflow).toBe("auto");
 
-    // A wider-than-viewport image must be scrollable rather than shrunk.
-    if (sizing.naturalWidth > sizing.clientWidth) {
-      expect(sizing.scrollable).toBe(true);
-    }
+    // The narrow viewport above should make any real Reddit image overflow, so
+    // assert that precondition rather than skipping the scroll check silently.
+    expect(
+      sizing.naturalWidth,
+      "image should be wider than the 380px dialog viewport"
+    ).toBeGreaterThan(sizing.clientWidth);
+    expect(sizing.scrollable).toBe(true);
 
     // Escape closes the dialog.
     await page.keyboard.press("Escape");

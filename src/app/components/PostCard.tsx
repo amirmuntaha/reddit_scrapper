@@ -27,7 +27,15 @@ interface PostCardProps {
   scrapedDateLabel: string;
 }
 
+/** App-wide link/button focus style. */
 const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
+
+/**
+ * The card overlay needs an inset ring: an outward offset would be painted
+ * outside the article's padding box and clipped by its `overflow-hidden`.
+ */
+const insetFocusRing =
   "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-orange-400";
 
 /**
@@ -75,6 +83,18 @@ export default function PostCard({
     return () => dialog.removeEventListener("close", handleClose);
   }, []);
 
+  // A modal dialog does not lock page scroll, so the dashboard would otherwise
+  // scroll behind the image.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isOpen]);
+
   /** Records the intrinsic size, including when the image is already cached. */
   const measure = useCallback((node: HTMLImageElement | null) => {
     if (node?.complete && node.naturalWidth > 0) {
@@ -91,6 +111,7 @@ export default function PostCard({
             alt={post.title}
             fill
             className="object-cover"
+            referrerPolicy="no-referrer"
             unoptimized
           />
           {post.posted_to_instagram && (
@@ -130,7 +151,7 @@ export default function PostCard({
           onClick={open}
           aria-haspopup="dialog"
           aria-label={`View full size image: ${post.title}`}
-          className={`absolute inset-0 cursor-zoom-in rounded-t-xl ${focusRing}`}
+          className={`absolute inset-0 cursor-zoom-in rounded-t-xl ${insetFocusRing}`}
         />
       </div>
 
@@ -212,6 +233,7 @@ export default function PostCard({
                 ref={measure}
                 src={post.image_url}
                 alt={post.title}
+                referrerPolicy="no-referrer"
                 className="block max-w-none"
                 onLoad={(event) =>
                   setNaturalSize({

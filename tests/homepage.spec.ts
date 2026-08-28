@@ -64,4 +64,58 @@ test.describe("Homepage", () => {
   test("should have proper meta and page title", async ({ page }) => {
     await expect(page).toHaveTitle(/./); // At minimum, a non-empty title
   });
+
+  test("clicking a card opens a dialog with the image at full size", async ({
+    page,
+  }) => {
+    const cardButton = page
+      .locator('article button[aria-haspopup="dialog"]')
+      .first();
+
+    test.skip(
+      (await cardButton.count()) === 0,
+      "No scraped posts available to open"
+    );
+
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog).toHaveCount(0);
+
+    await cardButton.click();
+    await expect(dialog).toHaveCount(1);
+
+    // The image must render at its intrinsic size, not scaled to fit.
+    const image = dialog.locator("img").first();
+    await expect(image).toBeVisible();
+    await page.waitForFunction(() => {
+      const img = document.querySelector("dialog[open] img");
+      return img instanceof HTMLImageElement && img.complete;
+    });
+
+    const sizing = await image.evaluate((node: HTMLImageElement) => {
+      const rect = node.getBoundingClientRect();
+      const scroller = node.parentElement!;
+      return {
+        naturalWidth: node.naturalWidth,
+        renderedWidth: Math.round(rect.width),
+        overflow: getComputedStyle(scroller).overflow,
+        scrollable:
+          scroller.scrollWidth > scroller.clientWidth ||
+          scroller.scrollHeight > scroller.clientHeight,
+        clientWidth: scroller.clientWidth,
+      };
+    });
+
+    expect(sizing.naturalWidth).toBeGreaterThan(0);
+    expect(sizing.renderedWidth).toBe(sizing.naturalWidth);
+    expect(sizing.overflow).toBe("auto");
+
+    // A wider-than-viewport image must be scrollable rather than shrunk.
+    if (sizing.naturalWidth > sizing.clientWidth) {
+      expect(sizing.scrollable).toBe(true);
+    }
+
+    // Escape closes the dialog.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+  });
 });

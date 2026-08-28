@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import InstagramButton from "./components/InstagramButton";
 import Pagination from "./components/Pagination";
+import PostCard from "./components/PostCard";
 import ScrapeButton from "./components/ScrapeButton";
 
 export const dynamic = "force-dynamic";
@@ -337,65 +336,7 @@ export default async function Home({ searchParams }: PageProps) {
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {posts.map((post) => (
-                <article
-                  key={post.id}
-                  className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-colors hover:border-gray-700"
-                >
-                  <div className="relative aspect-square bg-gray-800">
-                    <Image
-                      src={post.image_url}
-                      alt={post.title}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                    {post.posted_to_instagram && (
-                      <div className="absolute right-2 top-2 rounded bg-green-500/90 px-2 py-1 text-xs font-medium">
-                        ✓ Posted
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-3 sm:p-4">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-400">
-                        r/{post.subreddit}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ⬆ {post.score.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <h3 className="mb-2 line-clamp-2 text-sm font-medium">
-                      {post.title}
-                    </h3>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="mr-2 truncate">u/{post.author}</span>
-                      <span className="shrink-0">
-                        {new Date(post.scraped_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 sm:flex-row sm:items-center">
-                      <a
-                        href={post.reddit_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`text-xs text-blue-400 hover:text-blue-300 ${focusLink}`}
-                      >
-                        View on Reddit ↗
-                      </a>
-                      <InstagramButton
-                        postId={post.id}
-                        imageUrl={post.image_url}
-                        caption={post.caption || post.title}
-                        title={post.title}
-                        alreadyPosted={post.posted_to_instagram}
-                      />
-                    </div>
-                  </div>
-                </article>
+                <PostCard key={post.id} post={post} />
               ))}
             </div>
 

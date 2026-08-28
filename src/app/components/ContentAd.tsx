@@ -22,8 +22,10 @@ interface ContentAdProps {
  * routes listed in AD_ELIGIBLE_ROUTES, alongside <AdSenseLoader />, and keep it
  * away from navigation, pagination, and download controls.
  *
- * An unfilled unit is collapsed by the `[data-ad-status="unfilled"]` rule in
- * globals.css so no empty labelled frame is shown.
+ * When AdSense reports no creative, the `[data-ad-status="unfilled"]` rule in
+ * globals.css collapses the wrapper and its label. If the library never runs at
+ * all (blocked, CSP failure, network error) that attribute is never set, so the
+ * reserved space can remain empty — an accepted trade for lower layout shift.
  */
 export default function ContentAd({ className = "" }: ContentAdProps) {
   const clientId = getAdSenseClientId();

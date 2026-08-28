@@ -84,7 +84,16 @@ test.describe("Homepage", () => {
     const dialog = page.locator("dialog[open]");
     await expect(dialog).toHaveCount(0);
 
-    await cardButton.click();
+    // The dialog must stay outside the card element, or its header/footer text
+    // duplicates the card's own text inside <article>.
+    await expect(page.locator("article dialog")).toHaveCount(0);
+
+    // A closed dialog must be hidden: a plain `flex` utility would override the
+    // user-agent rule and leave it painted over the grid.
+    await expect(page.locator("dialog:not([open])").first()).toBeHidden();
+
+    // Clicking near the top edge fails if anything overlays the card.
+    await cardButton.click({ position: { x: 12, y: 12 } });
     await expect(dialog).toHaveCount(1);
 
     // Wait for either the loaded image or the explicit failure fallback, so a

@@ -33,3 +33,11 @@ body {
 .ad-unit:has(> ins.adsbygoogle[data-ad-status="unfilled"]) {
   display: none;
 }
+
+
+/* Safety net for the user-agent rule that a Tailwind display utility such as
+   `flex` would otherwise override, which would leave closed dialogs painted on
+   the page and intercepting clicks. Unlayered, so it wins over utilities. */
+dialog:not([open]) {
+  display: none;
+}

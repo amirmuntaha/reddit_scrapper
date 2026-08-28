@@ -180,9 +180,10 @@ export default function PostCard({
       {/*
         Rendered as a sibling of <article> so the card element contains only card
         content. Nesting the dialog inside it duplicated the subreddit and
-        "View on Reddit" text within the card's own subtree. A closed dialog is
-        display:none and an open one is in the top layer, so it never occupies a
-        grid cell.
+        "View on Reddit" text within the card's own subtree.
+
+        This never occupies a grid cell: while closed it is display:none (see the
+        `open:flex` note below), and while open it is in the top layer.
       */}
       <dialog
         ref={dialogRef}
@@ -193,9 +194,16 @@ export default function PostCard({
             close();
           }
         }}
-        /* m-auto restores the native dialog centering that Tailwind's preflight
-           margin reset removes. */
-        className="m-auto flex max-h-[95dvh] max-w-[97vw] flex-col overflow-hidden rounded-xl border border-gray-700 bg-gray-950 p-0 text-white backdrop:bg-black/80"
+        /*
+          `open:flex` rather than `flex`: an unconditional display utility is
+          author-origin CSS and would override the user-agent
+          `dialog:not([open]) { display: none }` rule, leaving a closed dialog
+          painted over the grid and intercepting clicks.
+
+          `m-auto` restores the native dialog centering that Tailwind's
+          preflight margin reset removes.
+        */
+        className="m-auto max-h-[95dvh] max-w-[97vw] flex-col overflow-hidden rounded-xl border border-gray-700 bg-gray-950 p-0 text-white backdrop:bg-black/80 open:flex"
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-800 bg-gray-950 p-4">
           <div className="min-w-0">

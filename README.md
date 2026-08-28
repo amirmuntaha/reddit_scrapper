@@ -21,10 +21,27 @@ A Next.js application that scrapes the top 10 most popular image posts from Redd
 - 🗄️ **Supabase Storage** — Stores posts in PostgreSQL with deduplication
 - 📊 **Dashboard** — View all scraped posts with images, scores, and metadata
 - 🔒 **Secure Cron Endpoint** — Protected by `CRON_SECRET` bearer token
+- 📚 **Original Content & Policy Pages** — Curation guide, about, editorial policy, contact, privacy, terms
+- 🔎 **SEO Metadata** — Per-route canonical/Open Graph tags, `robots.txt`, `sitemap.xml`
+- 💰 **Optional AdSense** — Ads render only on article pages, and only when a real publisher ID is configured
+
+## Public Pages
+
+| Route | Purpose | Ads allowed |
+|-------|---------|-------------|
+| `/` | Dynamic discovery dashboard (scraped records, scrape control, pagination) | ❌ No |
+| `/guides/responsible-curation` | Long-form original guide on rights, verification, attribution | ✅ Yes |
+| `/about` | Project purpose, automation scope, independence, limitations | ✅ Yes |
+| `/editorial-policy` | How records are discovered, filtered, ordered, corrected | ❌ No |
+| `/contact` | GitHub-issue contact route for corrections/removal/privacy/security | ❌ No |
+| `/privacy` | Data handling, third-party hosts, advertising disclosures | ❌ No |
+| `/terms` | Acceptable use, third-party rights, disclaimers | ❌ No |
+| `/robots.txt`, `/sitemap.xml` | Crawler directives and canonical URL list | — |
+| `/ads.txt` | Authorized seller line (404 until a publisher ID is set) | — |
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Database:** Supabase PostgreSQL
 - **Styling:** Tailwind CSS
@@ -86,17 +103,58 @@ curl http://localhost:3000/api/scrape
    - `CRON_SECRET`
 4. Deploy! The cron job will automatically run daily at 8:00 AM UTC
 
+## Enabling Google AdSense (optional)
+
+The site ships ad-free. Advertising activates only when both variables are set:
+
+```
+NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-XXXXXXXXXXXXXXXX   # AdSense > Account > Settings
+NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE=XXXXXXXXXX             # AdSense > Ads > By ad unit > Display ads
+```
+
+Add them in **Vercel > Settings > Environment Variables** and redeploy. Then:
+
+- one ad unit renders on each route in `AD_ELIGIBLE_ROUTES` (`src/lib/adsense.ts`)
+- `/ads.txt` starts serving `google.com, pub-…, DIRECT, f08c47fec0942fa0`
+- the privacy policy automatically switches to its "ads enabled" disclosures
+
+Invalid or missing values mean **no** loader script, **no** `<ins>` markup, and a 404 `/ads.txt`
+(a value that is set but malformed also logs a warning). To change which pages may show ads,
+edit `AD_ELIGIBLE_ROUTES` and render `<AdSenseLoader />` plus `<ContentAd />` in that page —
+never in the root layout, so excluded pages stay clean.
+
+> ⚠️ Keep **Auto ads off** in the AdSense account. `next/script` does not unload a script, so
+> after an in-app navigation from an article page the library stays loaded for that session;
+> Auto ads could then place ads on the dashboard or policy pages without any code change.
+
+> ⚠️ Approval is Google's decision. Pages built mainly from scraped third-party media
+> need real curation and original commentary; see `/guides/responsible-curation`.
+
 ## Project Structure
 
 ```
 src/
 ├── app/
 │   ├── api/
-│   │   └── scrape/
-│   │       └── route.ts      # Cron job endpoint
-│   ├── page.tsx              # Dashboard UI
-│   └── layout.tsx            # Root layout
+│   │   ├── scrape/route.ts       # Cron job endpoint
+│   │   ├── download/route.ts     # Image proxy for manual IG download
+│   │   └── instagram/route.ts    # Reserved for future Graph API use
+│   ├── about/page.tsx            # About (ads allowed)
+│   ├── guides/
+│   │   └── responsible-curation/page.tsx  # Long-form guide (ads allowed)
+│   ├── editorial-policy/page.tsx # Transparency policy
+│   ├── contact/page.tsx          # GitHub-issue contact route
+│   ├── privacy/page.tsx          # Privacy policy (ad-state aware)
+│   ├── terms/page.tsx            # Terms of use
+│   ├── components/               # SiteHeader, SiteFooter, StaticContent, ads, buttons
+│   ├── ads.txt/route.ts          # Authorized seller line (404 when unconfigured)
+│   ├── robots.ts                 # Crawler rules + sitemap pointer
+│   ├── sitemap.ts                # Canonical public routes
+│   ├── page.tsx                  # Dashboard UI
+│   └── layout.tsx                # Root layout, shared chrome, base metadata
 ├── lib/
+│   ├── adsense.ts            # Publisher ID validation & ad-eligible routes
+│   ├── metadata.ts           # Per-page canonical/OG/Twitter metadata helper
 │   ├── scraper.ts            # Reddit scraping logic
 │   └── supabase.ts           # Supabase client & types
 supabase/
@@ -149,6 +207,7 @@ npm run test:report
 | `tests/homepage.spec.ts` | Dashboard UI — header, post grid, empty state, links |
 | `tests/api-scrape.spec.ts` | API endpoint — response codes, JSON structure, timing |
 | `tests/performance.spec.ts` | Performance, responsiveness, accessibility checks |
+| `tests/content-pages.spec.ts` | Content/policy routes, navigation, crawler files, ad placement rules |
 
 ### Note on Deployment Protection
 

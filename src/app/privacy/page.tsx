@@ -1,4 +1,9 @@
 import Link from "next/link";
+import {
+  AD_ELIGIBLE_ROUTES,
+  AD_EXCLUDED_ROUTES,
+  isAdSenseEnabled,
+} from "../../lib/adsense";
 import { createPageMetadata } from "../../lib/metadata";
 import {
   BulletList,
@@ -19,6 +24,8 @@ const linkStyles =
   "rounded-sm font-medium text-orange-300 underline decoration-orange-400/50 underline-offset-4 hover:text-orange-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
 
 export default function PrivacyPage() {
+  const adsEnabled = isAdSenseEnabled();
+
   return (
     <StaticPage
       eyebrow="Privacy"
@@ -26,10 +33,12 @@ export default function PrivacyPage() {
       intro="This policy describes the data involved when you visit Reddit Scraper and the public-source metadata stored by the project. It also states clearly which advertising and tracking features are not currently enabled."
     >
       <Notice>
-        Effective August 17, 2026. Reddit Scraper currently has no user accounts,
-        newsletter, contact form, analytics SDK, advertising code, or first-party
-        behavioral tracking. Do not send sensitive information through public GitHub
-        issues.
+        Effective August 17, 2026. Reddit Scraper has no user accounts, newsletter,
+        contact form, or analytics SDK.{" "}
+        {adsEnabled
+          ? "Google AdSense is enabled on this site's article pages only; see the advertising section below."
+          : "It also has no advertising code or first-party behavioral tracking."}{" "}
+        Do not send sensitive information through public GitHub issues.
       </Notice>
 
       <ContentSection title="Information handled by the project">
@@ -89,26 +98,59 @@ export default function PrivacyPage() {
       </ContentSection>
 
       <ContentSection title="Advertising and cookies">
-        <p>
-          Google AdSense and other advertising services are <strong className="text-white">not currently enabled</strong> on
-          this site. No AdSense script, ad slot, or placeholder publisher identifier is
-          included. This site also does not currently set first-party cookies for
-          accounts, preferences, or analytics.
-        </p>
-        <p>
-          Before advertising is activated, the implementation and this policy must be
-          reviewed and updated, and any consent mechanism required for the visitor&apos;s
-          location must be put in place. If Google AdSense is enabled in the future,
-          Google and participating vendors may use cookies, web beacons, IP addresses,
-          or other identifiers to serve, personalize where permitted, limit, and
-          measure ads based on visits to this and other sites. Visitors would be able
-          to manage personalized advertising through{" "}
-          <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className={linkStyles}>Google Ads Settings ↗</a>.
-        </p>
+        {adsEnabled ? (
+          <>
+            <p>
+              Google AdSense is <strong className="text-white">enabled</strong> on this
+              site. Ad units are rendered only on these article pages:{" "}
+              {AD_ELIGIBLE_ROUTES.join(", ")}. No ad unit is rendered on{" "}
+              {AD_EXCLUDED_ROUTES.join(", ")}. Because browsers keep a script once it
+              has loaded, the advertising library can remain active for the rest of a
+              visit after you move from an article page to one of those pages, even
+              though no ad is shown there.
+            </p>
+            <p>
+              Third-party vendors, including Google, use cookies to serve ads based on
+              a visitor&apos;s prior visits to this or other websites. Google&apos;s use
+              of advertising cookies enables Google and its partners to serve ads based
+              on visits to this site and other sites on the internet. Google, its
+              partners, and other ad networks may also use web beacons, IP addresses,
+              or similar identifiers to select, limit, and measure ads.
+            </p>
+            <p>
+              Visitors can opt out of personalized advertising in{" "}
+              <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className={linkStyles}>Google Ads Settings ↗</a>{" "}
+              or opt out of some third-party vendors&apos; use of advertising cookies at{" "}
+              <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className={linkStyles}>aboutads.info ↗</a>.
+              This site does not run its own consent-management platform; any consent
+              message required for your region is the one configured for this property
+              in Google&apos;s AdSense privacy and messaging tools.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              Google AdSense and other advertising services are <strong className="text-white">not currently enabled</strong> on
+              this site. No AdSense script, ad slot, or placeholder publisher identifier
+              is served. This site also does not currently set first-party cookies for
+              accounts, preferences, or analytics.
+            </p>
+            <p>
+              The codebase supports advertising only on original article pages, and only
+              when a real publisher ID is configured. Before advertising is activated,
+              any consent mechanism required for the visitor&apos;s location must be put
+              in place. If Google AdSense is enabled, Google and participating vendors
+              may use cookies, web beacons, IP addresses, or other identifiers to serve,
+              personalize where permitted, limit, and measure ads based on visits to
+              this and other sites, and visitors will be able to manage personalized
+              advertising through{" "}
+              <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className={linkStyles}>Google Ads Settings ↗</a>.
+            </p>
+          </>
+        )}
         <p>
           Google explains its data use on publisher sites in{" "}
           <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className={linkStyles}>How Google uses information from sites or apps that use its services ↗</a>.
-          This prospective disclosure does not mean advertising is active today.
         </p>
       </ContentSection>
 

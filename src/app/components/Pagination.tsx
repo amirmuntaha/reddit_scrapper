@@ -23,7 +23,7 @@ export default function Pagination({
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", page.toString());
     params.set("perPage", (newPerPage || perPage).toString());
-    router.push(`/?${params.toString()}`);
+    router.push(`/?${params.toString()}#saved-records`);
   };
 
   // On mobile, show limited page numbers (current ± 1)

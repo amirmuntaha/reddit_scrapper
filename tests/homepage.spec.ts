@@ -65,7 +65,7 @@ test.describe("Homepage", () => {
     await expect(page).toHaveTitle(/./); // At minimum, a non-empty title
   });
 
-  test("clicking a card opens a dialog with the image at full size", async ({
+  test("clicking a card opens a dialog with a responsive full image", async ({
     page,
   }) => {
     const cardButton = page
@@ -127,34 +127,41 @@ test.describe("Homepage", () => {
       "the source image should still be reachable"
     ).toBe("loaded");
 
-    // The image must render at its intrinsic size, not scaled to fit.
+    // Wide images scale down to fit without horizontal scrolling or distortion.
     const image = dialog.locator("img").first();
     await expect(image).toBeVisible();
 
     const sizing = await image.evaluate((node: HTMLImageElement) => {
       const rect = node.getBoundingClientRect();
       const scroller = node.parentElement!;
+      const style = getComputedStyle(scroller);
       return {
         naturalWidth: node.naturalWidth,
-        renderedWidth: Math.round(rect.width),
-        overflow: getComputedStyle(scroller).overflow,
-        scrollable:
-          scroller.scrollWidth > scroller.clientWidth ||
-          scroller.scrollHeight > scroller.clientHeight,
+        naturalHeight: node.naturalHeight,
+        renderedWidth: rect.width,
+        renderedHeight: rect.height,
+        overflowX: style.overflowX,
+        overflowY: style.overflowY,
+        scrollWidth: scroller.scrollWidth,
         clientWidth: scroller.clientWidth,
       };
     });
 
-    expect(sizing.renderedWidth).toBe(sizing.naturalWidth);
-    expect(sizing.overflow).toBe("auto");
-
-    // The narrow viewport above should make any real Reddit image overflow, so
-    // assert that precondition rather than skipping the scroll check silently.
+    // The narrow viewport should exercise scaling rather than merely verifying
+    // an image that already fits.
     expect(
       sizing.naturalWidth,
       "image should be wider than the 380px dialog viewport"
     ).toBeGreaterThan(sizing.clientWidth);
-    expect(sizing.scrollable).toBe(true);
+    expect(sizing.renderedWidth).toBeLessThanOrEqual(sizing.clientWidth + 1);
+    expect(sizing.renderedWidth).toBeLessThanOrEqual(sizing.naturalWidth + 1);
+    expect(sizing.scrollWidth).toBeLessThanOrEqual(sizing.clientWidth + 1);
+    expect(sizing.overflowX).toBe("hidden");
+    expect(sizing.overflowY).toBe("auto");
+    expect(sizing.renderedWidth / sizing.renderedHeight).toBeCloseTo(
+      sizing.naturalWidth / sizing.naturalHeight,
+      2
+    );
 
     // Escape closes the dialog.
     await page.keyboard.press("Escape");

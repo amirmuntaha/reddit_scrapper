@@ -40,9 +40,9 @@ const insetFocusRing =
 
 /**
  * A dashboard record card. The preview area opens a modal dialog showing the
- * image at its natural size — never scaled down — so a reviewer can inspect the
- * real pixels. The dialog body scrolls on both axes when the image is larger
- * than the viewport.
+ * complete image. Images retain their natural size when they fit, while wide
+ * images scale down to the available width. The dialog body scrolls vertically
+ * when the fitted image is taller than the viewport.
  *
  * The clickable region is an overlay button that is a sibling of the card
  * content, not its parent: that keeps the title a real heading, keeps the
@@ -124,7 +124,7 @@ export default function PostCard({
               aria-hidden="true"
               className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-80 transition-opacity group-hover:opacity-100"
             >
-              🔍 Full size
+              🔍 Full image
             </span>
           </div>
 
@@ -151,7 +151,7 @@ export default function PostCard({
             type="button"
             onClick={open}
             aria-haspopup="dialog"
-            aria-label={`View full size image: ${post.title}`}
+            aria-label={`View full image: ${post.title}`}
             className={`absolute inset-0 cursor-zoom-in rounded-t-xl ${insetFocusRing}`}
           />
         </div>
@@ -187,7 +187,7 @@ export default function PostCard({
       */}
       <dialog
         ref={dialogRef}
-        aria-label={`Full size image: ${post.title}`}
+        aria-label={`Full image: ${post.title}`}
         onClick={(event) => {
           // Clicking the backdrop (the dialog element itself) closes the dialog.
           if (event.target === dialogRef.current) {
@@ -213,7 +213,7 @@ export default function PostCard({
             <p className="mt-1 text-xs text-gray-400">
               r/{post.subreddit} · u/{post.author}
               {naturalSize
-                ? ` · ${naturalSize.width} × ${naturalSize.height} px (actual size)`
+                ? ` · ${naturalSize.width} × ${naturalSize.height} px (source dimensions)`
                 : ""}
             </p>
           </div>
@@ -226,8 +226,8 @@ export default function PostCard({
           </button>
         </header>
 
-        {/* Scrolls on both axes when the image exceeds the dialog. */}
-        <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-gray-900/40">
+        {/* Wide images fit the dialog; tall images scroll vertically. */}
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-gray-900/40">
           {isOpen &&
             (failed ? (
               <p className="p-8 text-center text-sm text-gray-400">
@@ -244,14 +244,14 @@ export default function PostCard({
               </p>
             ) : (
               /* eslint-disable-next-line @next/next/no-img-element -- the
-                 dialog must render the third-party image at its intrinsic
-                 size, which next/image cannot do without known dimensions. */
+                 source dimensions are unknown, and the dialog must preserve
+                 natural sizing unless the image is too wide to fit. */
               <img
                 ref={measure}
                 src={post.image_url}
                 alt={post.title}
                 referrerPolicy="no-referrer"
-                className="block max-w-none"
+                className="block h-auto max-w-full"
                 onLoad={(event) =>
                   setNaturalSize({
                     width: event.currentTarget.naturalWidth,

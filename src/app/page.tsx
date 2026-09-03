@@ -301,13 +301,20 @@ export default async function Home({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <section aria-labelledby="saved-records" className="border-t border-gray-800 pt-10 sm:pt-14">
+      <section
+        id="saved-records"
+        aria-labelledby="saved-records-heading"
+        className="scroll-mt-24 border-t border-gray-800 pt-10 sm:pt-14 lg:scroll-mt-20"
+      >
         <div className="mb-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-400">
               Database view
             </p>
-            <h2 id="saved-records" className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2
+              id="saved-records-heading"
+              className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"
+            >
               Recent saved records
             </h2>
           </div>

@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import InstagramButton from "./InstagramButton";
 
 export interface DashboardPost {
@@ -54,8 +61,14 @@ export default function PostCard({
   scoreLabel,
   scrapedDateLabel,
 }: PostCardProps) {
+  const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteSecret, setDeleteSecret] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{
     width: number;
     height: number;
@@ -73,27 +86,101 @@ export default function PostCard({
     dialogRef.current?.close();
   }, []);
 
-  // Keep local state in sync when the dialog closes via Esc or the backdrop.
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
+  const openDelete = useCallback(() => {
+    setDeleteSecret("");
+    setDeleteError(null);
+    setIsDeleteOpen(true);
+    deleteDialogRef.current?.showModal();
+  }, []);
 
-    const handleClose = () => setIsOpen(false);
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
+  const closeDelete = useCallback(() => {
+    if (!isDeleting) {
+      deleteDialogRef.current?.close();
+    }
+  }, [isDeleting]);
+
+  const handleDelete = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!deleteSecret.trim() || isDeleting) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(() => abortController.abort(), 15_000);
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: "DELETE",
+        signal: abortController.signal,
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${deleteSecret}`,
+        },
+      });
+      const payload: unknown = await response.json().catch(() => null);
+      const result =
+        payload && typeof payload === "object"
+          ? (payload as Record<string, unknown>)
+          : null;
+
+      if (!response.ok) {
+        const message =
+          response.status === 401
+            ? "The admin secret is incorrect."
+            : typeof result?.error === "string"
+              ? result.error
+              : "The saved record could not be deleted.";
+        throw new Error(message);
+      }
+
+      if (result?.success !== true || result.deletedId !== post.id) {
+        throw new Error("The server returned an invalid deletion response.");
+      }
+
+      deleteDialogRef.current?.close();
+      router.refresh();
+    } catch (error) {
+      setDeleteError(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "The deletion request timed out. Please try again."
+          : error instanceof Error
+            ? error.message
+            : "The saved record could not be deleted."
+      );
+    } finally {
+      window.clearTimeout(timeoutId);
+      setIsDeleting(false);
+    }
+  };
+
+  // Keep local state in sync when a dialog closes via Esc or its backdrop.
+  useEffect(() => {
+    const imageDialog = dialogRef.current;
+    const deleteDialog = deleteDialogRef.current;
+    if (!imageDialog || !deleteDialog) return;
+
+    const handleImageClose = () => setIsOpen(false);
+    const handleDeleteClose = () => setIsDeleteOpen(false);
+    imageDialog.addEventListener("close", handleImageClose);
+    deleteDialog.addEventListener("close", handleDeleteClose);
+    return () => {
+      imageDialog.removeEventListener("close", handleImageClose);
+      deleteDialog.removeEventListener("close", handleDeleteClose);
+    };
   }, []);
 
   // A modal dialog does not lock page scroll, so the dashboard would otherwise
-  // scroll behind the image.
+  // scroll behind it.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !isDeleteOpen) return;
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [isOpen]);
+  }, [isOpen, isDeleteOpen]);
 
   /** Records the intrinsic size, including when the image is already cached. */
   const measure = useCallback((node: HTMLImageElement | null) => {
@@ -166,16 +253,109 @@ export default function PostCard({
             >
               View on Reddit ↗
             </a>
-            <InstagramButton
-              postId={post.id}
-              imageUrl={post.image_url}
-              caption={post.caption || post.title}
-              title={post.title}
-              alreadyPosted={post.posted_to_instagram}
-            />
+            <div className="flex w-full flex-wrap items-end justify-between gap-2 sm:w-auto sm:justify-end">
+              <InstagramButton
+                postId={post.id}
+                imageUrl={post.image_url}
+                caption={post.caption || post.title}
+                title={post.title}
+                alreadyPosted={post.posted_to_instagram}
+              />
+              <button
+                type="button"
+                onClick={openDelete}
+                aria-haspopup="dialog"
+                aria-controls={`delete-post-${post.id}`}
+                aria-label={`Delete saved record: ${post.title}`}
+                className={`rounded-lg border border-red-500/50 px-3 py-1.5 text-xs font-medium text-red-300 transition-colors hover:border-red-400 hover:bg-red-500/10 hover:text-red-200 ${focusRing}`}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </article>
+
+      <dialog
+        ref={deleteDialogRef}
+        id={`delete-post-${post.id}`}
+        aria-labelledby={`delete-post-title-${post.id}`}
+        aria-describedby={`delete-post-description-${post.id}`}
+        onCancel={(event) => {
+          if (isDeleting) event.preventDefault();
+        }}
+        onClick={(event) => {
+          if (event.target === deleteDialogRef.current) {
+            closeDelete();
+          }
+        }}
+        className="m-auto w-[92vw] max-w-lg overflow-hidden rounded-xl border border-gray-700 bg-gray-950 p-0 text-white backdrop:bg-black/80"
+      >
+        <form onSubmit={handleDelete} aria-busy={isDeleting}>
+          <div className="border-b border-gray-800 p-5">
+            <h2
+              id={`delete-post-title-${post.id}`}
+              className="text-lg font-semibold text-red-200"
+            >
+              Delete saved record?
+            </h2>
+            <p
+              id={`delete-post-description-${post.id}`}
+              className="mt-3 break-words text-sm leading-6 text-gray-300"
+            >
+              Remove &ldquo;{post.title}&rdquo; from this dashboard. This does not
+              delete the original Reddit post or source image, but the saved
+              record cannot be restored.
+            </p>
+
+            <label
+              htmlFor={`delete-secret-${post.id}`}
+              className="mt-5 block text-sm font-medium text-gray-200"
+            >
+              Admin secret
+            </label>
+            <input
+              id={`delete-secret-${post.id}`}
+              type="password"
+              value={deleteSecret}
+              onChange={(event) => setDeleteSecret(event.target.value)}
+              required
+              disabled={isDeleting}
+              autoComplete="off"
+              spellCheck={false}
+              className={`mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 disabled:cursor-wait disabled:opacity-70 ${focusRing}`}
+              placeholder="Enter the same secret used for Run Scrape"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              Confirmation requires the same CRON_SECRET used by Run Scrape.
+            </p>
+
+            {deleteError && (
+              <p role="alert" className="mt-4 text-sm text-red-300">
+                {deleteError}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 bg-gray-900/60 px-5 py-4">
+            <button
+              type="button"
+              onClick={closeDelete}
+              disabled={isDeleting}
+              className={`rounded-lg border border-gray-700 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-800 disabled:cursor-wait disabled:opacity-50 ${focusRing}`}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isDeleting || !deleteSecret.trim()}
+              className={`rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-900 disabled:text-red-300 ${focusRing}`}
+            >
+              {isDeleting ? "Deleting…" : "Delete record"}
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       {/*
         Rendered as a sibling of <article> so the card element contains only card

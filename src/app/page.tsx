@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import Pagination from "./components/Pagination";
 import PostCard, { type DashboardPost } from "./components/PostCard";
@@ -13,7 +14,7 @@ interface RedditPost extends DashboardPost {
   reddit_created_at: string | null;
 }
 
-async function getTotalPostCount(): Promise<number> {
+async function getTotalPostCount(): Promise<number | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -24,10 +25,10 @@ async function getTotalPostCount(): Promise<number> {
 
   if (error) {
     console.error("Error fetching count:", error);
-    return 0;
+    return null;
   }
 
-  return count || 0;
+  return count ?? 0;
 }
 
 async function getPaginatedPosts(
@@ -64,15 +65,27 @@ const focusLink =
 
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page as string) || 1);
+  const requestedPage = Math.max(1, parseInt(params.page as string) || 1);
   const perPage = [6, 9, 12, 15].includes(parseInt(params.perPage as string))
     ? parseInt(params.perPage as string)
     : 9;
 
-  const [posts, totalPosts] = await Promise.all([
-    getPaginatedPosts(page, perPage),
+  const [posts, totalPostCount] = await Promise.all([
+    getPaginatedPosts(requestedPage, perPage),
     getTotalPostCount(),
   ]);
+  const totalPosts = totalPostCount ?? 0;
+
+  // Deleting the final record on the last page can make the current URL stale.
+  // Only canonicalize from a successful count; a transient count failure is
+  // not evidence that records or pages disappeared.
+  if (totalPostCount !== null) {
+    const lastPage = Math.max(1, Math.ceil(totalPostCount / perPage));
+    if (requestedPage > lastPage) {
+      redirect(`/?page=${lastPage}&perPage=${perPage}#saved-records`);
+    }
+  }
+  const page = requestedPage;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4 sm:py-10">

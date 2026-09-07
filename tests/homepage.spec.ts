@@ -81,14 +81,19 @@ test.describe("Homepage", () => {
     // so the scroll behaviour below is actually exercised.
     await page.setViewportSize({ width: 380, height: 640 });
 
-    const dialog = page.locator("dialog[open]");
+    const dialog = page.locator(
+      'dialog[open][aria-label^="Full image:"]'
+    );
     await expect(dialog).toHaveCount(0);
 
-    // One dialog per card, all closed. Asserted positively so the checks below
-    // cannot pass simply because no dialog is rendered at all.
+    // One full-image dialog per card, all closed. Asserted positively so the
+    // checks below cannot pass simply because no image dialog is rendered.
     const cardCount = await page.locator("article").count();
-    await expect(page.locator("dialog")).toHaveCount(cardCount);
-    await expect(page.locator("dialog:not([open])")).toHaveCount(cardCount);
+    const imageDialogs = page.locator('dialog[aria-label^="Full image:"]');
+    await expect(imageDialogs).toHaveCount(cardCount);
+    await expect(
+      page.locator('dialog[aria-label^="Full image:"]:not([open])')
+    ).toHaveCount(cardCount);
 
     // The dialog must stay outside the card element, or its header/footer text
     // duplicates the card's own text inside <article>.
@@ -97,11 +102,11 @@ test.describe("Homepage", () => {
     // A closed dialog must be hidden: a plain `flex` utility would override the
     // user-agent rule and leave it painted over the grid, intercepting clicks.
     // Checked at desktop width too, where a stray dialog covers different cards.
-    for (const dialogEl of await page.locator("dialog").all()) {
+    for (const dialogEl of await imageDialogs.all()) {
       await expect(dialogEl).toBeHidden();
     }
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(page.locator("dialog").first()).toBeHidden();
+    await expect(imageDialogs.first()).toBeHidden();
     await page.setViewportSize({ width: 380, height: 640 });
 
     // Clicking near this card's top-left corner fails if anything overlays it.

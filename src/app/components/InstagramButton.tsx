@@ -81,24 +81,25 @@ export default function InstagramButton({
 
   if (alreadyPosted) {
     return (
-      <span className="text-xs text-green-400 flex items-center gap-1">
+      <span className="inline-flex h-8 items-center gap-1 text-xs text-green-400">
         ✓ Posted to IG
       </span>
     );
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex min-w-0 flex-1 flex-col items-start gap-1 md:items-end">
       <button
+        type="button"
         onClick={handleDownloadAndCopy}
         disabled={loading}
-        className="text-xs text-pink-400 hover:text-pink-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
+        className="inline-flex h-8 items-center whitespace-nowrap text-xs text-pink-400 transition-colors hover:text-pink-300 disabled:cursor-not-allowed disabled:text-gray-600"
       >
         {loading ? "Downloading..." : "📸 Download for IG"}
       </button>
       {message && (
         <span
-          className={`text-xs ${
+          className={`max-w-full break-words text-left text-xs md:text-right ${
             status === "success" ? "text-green-400" : "text-red-400"
           }`}
         >

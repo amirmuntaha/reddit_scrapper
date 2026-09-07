@@ -244,16 +244,16 @@ export default function PostCard({
         </div>
 
         <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-          <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 sm:flex-row sm:items-center">
+          <div className="mt-3 flex flex-col items-start justify-between gap-2 border-t border-gray-800 pt-3 md:flex-row md:items-start">
             <a
               href={post.reddit_url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`rounded-sm text-xs text-blue-400 hover:text-blue-300 ${focusRing}`}
+              className={`inline-flex h-8 shrink-0 items-center rounded-sm text-xs text-blue-400 hover:text-blue-300 ${focusRing}`}
             >
               View on Reddit ↗
             </a>
-            <div className="flex w-full flex-wrap items-end justify-between gap-2 sm:w-auto sm:justify-end">
+            <div className="flex w-full flex-wrap items-start justify-between gap-2 md:min-w-0 md:w-auto md:flex-1 md:justify-end">
               <InstagramButton
                 postId={post.id}
                 imageUrl={post.image_url}
@@ -267,7 +267,7 @@ export default function PostCard({
                 aria-haspopup="dialog"
                 aria-controls={`delete-post-${post.id}`}
                 aria-label={`Delete saved record: ${post.title}`}
-                className={`rounded-lg border border-red-500/50 px-3 py-1.5 text-xs font-medium text-red-300 transition-colors hover:border-red-400 hover:bg-red-500/10 hover:text-red-200 ${focusRing}`}
+                className={`inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-red-500/50 px-3 text-xs font-medium text-red-300 transition-colors hover:border-red-400 hover:bg-red-500/10 hover:text-red-200 ${focusRing}`}
               >
                 Delete
               </button>
